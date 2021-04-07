@@ -44,7 +44,6 @@ io.on('connect', (socket) => {
         if(io.sockets.adapter.rooms.has(data['room-id']) === true) {
             console.log(`Joining room ${data['room-id']} and emitting room_joined socket event`);
             socket.join(data['room-id']);
-            // io.emit('room-joined', data);
             socket.broadcast.in(data['room-id']).emit('room-joined', data);
         }
         else {
@@ -59,6 +58,14 @@ io.on('connect', (socket) => {
 
     socket.on('ice-candidate', (data) => {
         socket.broadcast.in(data['room-id']).emit('ice-candidate', data);
+    });
+
+    socket.on('offer', (data) => {
+        socket.broadcast.in(data['room-id']).emit('offer', data);
+    });
+
+    socket.on('answer', (data) => {
+        socket.broadcast.in(data['room-id']).emit('answer', data);
     });
 });
 
