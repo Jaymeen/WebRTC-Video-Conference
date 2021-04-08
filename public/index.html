@@ -44,18 +44,15 @@
             <button class="btn btn-success" onclick="createRoom(this)">Create Room</button>
         </div>
     </div>
-<!--    <hr id="horizontal-row" hidden>-->
-<!--    <div id="div-select" class="row" hidden>-->
-<!--        <div class="col-md-4">-->
-<!--            <select name="audio-input-source" id="audio-input-source"></select>-->
-<!--        </div>-->
-<!--        <div class="col-md-4">-->
-<!--            <select name="video-input-source" id="video-input-source"></select>-->
-<!--        </div>-->
-<!--        <div class="col-md-4">-->
-<!--            <select name="audio-output-source" id="audio-output-source"></select>-->
-<!--        </div>-->
-<!--    </div>-->
+    <hr id="horizontal-row" hidden>
+    <div id="div-select" class="row" hidden>
+        <div class="col-md-6">
+            <select name="audio-input-source" id="audio-input-source" onchange="changeDevice()"></select>
+        </div>
+        <div class="col-md-6">
+            <select name="video-input-source" id="video-input-source" onchange="changeDevice()"></select>
+        </div>
+    </div>
     <hr>
     <div id="video-display" class="row mt-5">
 
