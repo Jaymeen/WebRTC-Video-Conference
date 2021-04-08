@@ -1,16 +1,11 @@
 let socket;
 window.onload = getUniqueId();
 let clientName;
-// const videoSelect = document.querySelector('select#video-input-source');
-// const audioInputSelect = document.querySelector('select#audio-input-source');
-// const audioOutputSelect = document.querySelector('select#audio-output-source');
 
 let localStream;
 let peerConnections = {};
 let roomId;
 let clientId;
-// const selectors = [audioInputSelect, audioOutputSelect, videoSelect];
-// audioOutputSelect.disabled = !('sinkId' in HTMLMediaElement.prototype);
 
 const mediaConstraints = {
     audio: {
@@ -127,7 +122,6 @@ async function setLocalMedia() {
 }
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
-    // console.log('Inside Setup Connection !');
     const videoElement = getVideoElement(peerId, 0, peerName);
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
@@ -141,7 +135,6 @@ async function setUpConnection(peerId, peerName, initiateCall = false) {
 }
 
 async function createOffer(peerId) {
-    // console.log('Create Offer Initiated !');
     try {
         const offer = await peerConnections[peerId].pc.createOffer();
         await peerConnections[peerId].pc.setLocalDescription(offer);
@@ -153,7 +146,6 @@ async function createOffer(peerId) {
 }
 
 function addLocalStreamTracks(peerId) {
-    // console.log('Adding Local Tracks !');
     localStream.getTracks().forEach((track) => {
         peerConnections[peerId].pc.addTrack(track, localStream);
     });
@@ -165,13 +157,11 @@ async function setRemoteStream(track, peerId) {
 
 function gatherIceCandidates(iceCandidate, peerId) {
     if(iceCandidate.candidate != null) {
-        // console.log('inside Ice Candidates');
         socket.emit('ice-candidate', {'ice-candidate': iceCandidate.candidate, 'room-id': roomId, 'client-id': clientId, 'peer-id': peerId });
     }
 }
 
 function checkPeerDisconnection(event, peerId) {
-    console.log('conn state changed !');
     let state = peerConnections[peerId].pc.iceConnectionState;
 
     if(state === 'failed' || state === 'closed' || state === 'disconnected') {
@@ -200,7 +190,6 @@ function changeDevice() {
 }
 
 function gotStream(updatedStream) {
-    // console.log('Got Stream called !');
     const videoElement = document.getElementById(clientId + '-' + 0);
     localStream = updatedStream;
     videoElement.srcObject = localStream;
@@ -209,7 +198,6 @@ function gotStream(updatedStream) {
 }
 
 function changeTracks() {
-    // console.log('Change Tracks Called !');
     if(Object.keys(peerConnections).length !== 0) {
         Object.keys(peerConnections).forEach(key => {
             peerConnections[key].pc.getSenders().forEach(sender => {
@@ -225,7 +213,6 @@ function changeTracks() {
 }
 
 function gotDevices(deviceInfos, selectors) {
-    console.log(deviceInfos);
     // Handles being called several times to update labels. Preserve values.
     const values = selectors.map(select => select.value);
     selectors.forEach(select => {
@@ -240,14 +227,9 @@ function gotDevices(deviceInfos, selectors) {
         if (deviceInfo.kind === 'audioinput') {
             option.text = deviceInfo.label || `microphone ${audioInputSelect.length + 1}`;
             document.getElementById('audio-input-source').appendChild(option);
-        // } else if (deviceInfo.kind === 'audiooutput') {
-        //     option.text = deviceInfo.label || `speaker ${audioOutputSelect.length + 1}`;
-        //     audioOutputSelect.appendChild(option);
         } else if (deviceInfo.kind === 'videoinput') {
             option.text = deviceInfo.label || `camera ${videoSelect.length + 1}`;
             document.getElementById('video-input-source').appendChild(option);
-        // } else {
-        //     console.log('Some other kind of source/device: ', deviceInfo);
         }
     }
     selectors.forEach((select, selectorIndex) => {
@@ -275,7 +257,6 @@ async function onRoomJoined(data) {
 async function onMetaData(data) {
     if(data['peer-id'] === clientId) {
         try {
-            // console.log('meta-data recieved !');
             await setUpConnection(data['client-id'], data['client-name'], true);
         }
         catch(error) {
@@ -287,7 +268,6 @@ async function onMetaData(data) {
 async function onIceCandidate(data) {
     if(data['peer-id'] === clientId) {
         try {
-            // console.log('Ice Candidates Recieved !');
             await peerConnections[data['client-id']].pc.addIceCandidate(new RTCIceCandidate(data['ice-candidate']));
         }
         catch(error) {
@@ -299,7 +279,6 @@ async function onIceCandidate(data) {
 async function onOffer(data) {
     if(data['peer-id'] === clientId) {
         try {
-            // console.log('Offer Recieved !');
             await peerConnections[data['client-id']].pc.setRemoteDescription(new RTCSessionDescription(data['offer-sdp']));
             const answer = await peerConnections[data['client-id']].pc.createAnswer();
             peerConnections[data['client-id']].pc.setLocalDescription(new RTCSessionDescription(answer));
@@ -314,7 +293,6 @@ async function onOffer(data) {
 async function onAnswer(data) {
     if(data['peer-id'] === clientId) {
         try {
-            // console.log('Answer Recieved !');
             await peerConnections[data['client-id']].pc.setRemoteDescription(new RTCSessionDescription(data['answer-sdp']));
         }
         catch(error) {
@@ -325,5 +303,5 @@ async function onAnswer(data) {
 
 // Error Functions
 function handleError(error) {
-    // console.log('An Error Occurred : ' + error);
+    console.log('An Error Occurred : ' + error);
 }
