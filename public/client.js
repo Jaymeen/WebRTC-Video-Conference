@@ -131,10 +131,14 @@ async function setLocalMedia() {
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
     console.log('Inside Setup Connection !');
+    const videoElement = getVideoElement(peerId, 0);
+    videoElement.autoplay = true;
+    // videoElement.playsInline = true;
+    // videoElement.muted = true;
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
+    peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId) };
     addLocalStreamTracks(peerId);
     peerConnections[peerId].pc.onicecandidate = (iceCandidate) => {gatherIceCandidates(iceCandidate, peerId)};
-    peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId) };
 
     if(initiateCall === true) {
         await createOffer(peerId);
@@ -142,11 +146,11 @@ async function setUpConnection(peerId, peerName, initiateCall = false) {
 }
 
 async function createOffer(peerId) {
-    console.log('Create Offer Created !');
+    console.log('Create Offer Initiated !');
     try {
         const offer = await peerConnections[peerId].pc.createOffer();
         await peerConnections[peerId].pc.setLocalDescription(offer);
-
+        socket.emit('offer', { 'room-id': roomId, 'offer-sdp': offer, 'client-id': clientId, 'peer-id': peerId });
     }
     catch(error) {
         handleError(error);
@@ -160,23 +164,14 @@ function addLocalStreamTracks(peerId) {
     });
 }
 
-function setRemoteStream(remoteStream, peerId) {
-    console.log('Setting Remote Stream !');
-    let videoElement = document.getElementById(peerId + '-0');
-    if(videoElement) {
-        console.log('Video Element Already Exists');
-    }
-    else {
-        videoElement = getVideoElement(peerId, 0);
-    }
-    videoElement.srcObject = remoteStream.streams[0];
-    videoElement.play();
+async function setRemoteStream(track, peerId) {
+    document.getElementById(peerId+'-0').srcObject = track.streams[0];
 }
 
 function gatherIceCandidates(iceCandidate, peerId) {
-    if(iceCandidate != null) {
+    if(iceCandidate.candidate != null) {
         console.log('inside Ice Candidates');
-        socket.emit({'ice-candidate': iceCandidate, 'room-id': roomId, 'client-id': peerId });
+        socket.emit('ice-candidate', {'ice-candidate': iceCandidate.candidate, 'room-id': roomId, 'client-id': clientId, 'peer-id': peerId });
     }
 }
 
@@ -186,36 +181,63 @@ function setupSocket() {
     socket.on('room-joined', onRoomJoined);
     socket.on('ice-candidate', onIceCandidate);
     socket.on('send-metadata', onMetaData);
+    socket.on('offer', onOffer);
+    socket.on('answer', onAnswer);
 }
 
 async function onRoomJoined(data) {
-    // if(data['client-id'] === clientId) {
-    //     // initiate call if we are the newcomer peer
-    //     console.log('New comer !');
-    //     await setUpConnection(data['client-id'], data['client-name'], true);
-    // }
-    // else {
-    //     // set up peer connection object for a newcomer peer
-    //     console.log('Already Present !');
-    //     await setUpConnection(data['client-id'], data['client-name']);
-    //     socket.emit('send-metadata', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId, 'peer-id': data['client-id'] });
-    // }
     await setUpConnection(data['client-id'], data['client-name']);
     socket.emit('send-metadata', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId, 'peer-id': data['client-id'] });
 }
 
 async function onMetaData(data) {
     if(data['peer-id'] === clientId) {
-        await setUpConnection(data['client-id'], data['client-name'], true);
+        try {
+            console.log('meta-data recieved !');
+            await setUpConnection(data['client-id'], data['client-name'], true);
+        }
+        catch(error) {
+            handleError(error);
+        }
     }
 }
 
 async function onIceCandidate(data) {
-    try {
-        await peerConnections[data['client-id']].pc.addIceCandidate(new RTCIceCandidate(data['ice-candidate']));
+    if(data['peer-id'] === clientId) {
+        try {
+            console.log('Ice Candidates Recieved !');
+            await peerConnections[data['client-id']].pc.addIceCandidate(new RTCIceCandidate(data['ice-candidate']));
+        }
+        catch(error) {
+            handleError(error);
+        }
     }
-    catch(error) {
-        handleError(error);
+}
+
+async function onOffer(data) {
+    if(data['peer-id'] === clientId) {
+        try {
+            console.log('Offer Recieved !');
+            await peerConnections[data['client-id']].pc.setRemoteDescription(new RTCSessionDescription(data['offer-sdp']));
+            const answer = await peerConnections[data['client-id']].pc.createAnswer();
+            peerConnections[data['client-id']].pc.setLocalDescription(new RTCSessionDescription(answer));
+            socket.emit('answer', { 'room-id': roomId, 'answer-sdp': answer, 'client-id': clientId, 'peer-id': data['client-id'] });
+        }
+        catch(error) {
+            handleError(error);
+        }
+    }
+}
+
+async function onAnswer(data) {
+    if(data['peer-id'] === clientId) {
+        try {
+            console.log('Answer Recieved !');
+            await peerConnections[data['client-id']].pc.setRemoteDescription(new RTCSessionDescription(data['answer-sdp']));
+        }
+        catch(error) {
+            handleError(error);
+        }
     }
 }
 
@@ -223,3 +245,6 @@ async function onIceCandidate(data) {
 function handleError(error) {
     console.log('An Error Occurred : ' + error);
 }
+
+
+// CREATE OFFER AND SENDING OFFER TO SIGNALLING SERVER DONE. WORK ON ACCEPTING THE OFFER EVENT AND CREATING AND SEND ANSWER TO THAT OFFER.
