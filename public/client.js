@@ -11,7 +11,10 @@ const mediaConstraints = {
     audio: {
         echoCancellation: true
     },
-    video: true,
+    video: {
+        height: 262,
+        width: 350
+    },
 };
 
 const iceServers = {
@@ -87,8 +90,9 @@ function getVideoElement(element_id, instance, labelName) {
     innerDiv.setAttribute('class', 'col-md-4');
     const videoElement = document.createElement('video');
     videoElement.setAttribute('id', element_id + '-' + instance);
-    videoElement.style.width = 'inherit';
-    videoElement.style.height = 'inherit';
+    videoElement.style.width = '350px';
+    videoElement.style.height = '262px';
+    videoElement.style.objectFit = 'cover';
     const labelDiv = document.createElement('div');
     labelDiv.setAttribute('class', 'text-center');
     const label = document.createElement('label');
@@ -126,6 +130,7 @@ async function setLocalMedia() {
 async function setUpConnection(peerId, peerName, initiateCall = false) {
     const videoElement = getVideoElement(peerId, 0, peerName);
     videoElement.autoplay = true;
+    videoElement.muted = true;
     videoElement.playsInline = true;
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
