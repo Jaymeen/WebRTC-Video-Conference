@@ -87,7 +87,6 @@ function getVideoElement(element_id, instance, labelName) {
     innerDiv.setAttribute('class', 'col-md-4');
     const videoElement = document.createElement('video');
     videoElement.setAttribute('id', element_id + '-' + instance);
-    videoElement.setAttribute('autoplay', '');
     videoElement.style.width = 'inherit';
     videoElement.style.height = 'inherit';
     const labelDiv = document.createElement('div');
@@ -116,6 +115,9 @@ async function setLocalMedia() {
     }
 
     const localVideo = getVideoElement(clientId, 0, clientName);
+    localVideo.autoplay = true;
+    localVideo.muted = true;
+    localVideo.playsInline = true;
     localVideo.srcObject = localStream;
     document.querySelector('hr#horizontal-row').hidden = false;
     document.querySelector('div#div-select').hidden = false;
@@ -123,6 +125,8 @@ async function setLocalMedia() {
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
     const videoElement = getVideoElement(peerId, 0, peerName);
+    videoElement.autoplay = true;
+    videoElement.playsInline = true;
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
     addLocalStreamTracks(peerId);
