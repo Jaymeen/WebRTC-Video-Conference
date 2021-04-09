@@ -11,10 +11,7 @@ const mediaConstraints = {
     audio: {
         echoCancellation: true
     },
-    video: {
-        height: 262,
-        width: 350
-    },
+    video: true,
 };
 
 const iceServers = {
