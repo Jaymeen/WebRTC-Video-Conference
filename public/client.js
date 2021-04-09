@@ -127,7 +127,7 @@ async function setLocalMedia() {
 async function setUpConnection(peerId, peerName, initiateCall = false) {
     const videoElement = getVideoElement(peerId, 0, peerName);
     videoElement.autoplay = true;
-    videoElement.muted = true;
+    // videoElement.muted = true;
     videoElement.playsInline = true;
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
