@@ -6,6 +6,7 @@
     <title>WebRTC</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
     <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
 <div class="container mt-4">
@@ -24,7 +25,7 @@
             </div>
         </div>
         <div class="col-md-6 text-center">
-            <button class="btn btn-warning" onclick="joinRoom(this)">Join Room</button>
+            <button id="btn-join-room" class="btn btn-warning" onclick="joinRoom(this)">Join Room</button>
         </div>
     </div>
     <div class="row">
@@ -41,7 +42,7 @@
             </div>
         </div>
         <div class="col-md-6 text-center">
-            <button class="btn btn-success" onclick="createRoom(this)">Create Room</button>
+            <button id="btn-create-room" class="btn btn-success" onclick="createRoom(this)">Create Room</button>
         </div>
     </div>
     <hr id="horizontal-row" hidden>

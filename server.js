@@ -11,7 +11,7 @@ const io = require('socket.io')(https);
 const { v4: uuidv4 } = require('uuid');
 const uniqid = require('uniqid');
 
-app.use('/', express.static('public'));
+app.use(express.static('./public'));
 
 app.get('/clientId', (req, res) => {
     return res.json({
@@ -30,11 +30,9 @@ app.get('/createRoom', (req, res) => {
 app.get('/joinRoom', (req, res) => {
     let roomId = req.query['roomId'];
     if(io.sockets.adapter.rooms.has(roomId) === true) {
-        console.log('Room with ID : ' + roomId + ' Exists !');
         return res.status(200).send('Everything Cool !');
     }
     else {
-        console.log('Room with ID : ' + roomId + ' do not Exist !');
         return res.status(400).send('No Room with such an ID');
     }
 });
@@ -42,12 +40,10 @@ app.get('/joinRoom', (req, res) => {
 io.on('connect', (socket) => {
     socket.on('join', (data) => {
         if(io.sockets.adapter.rooms.has(data['room-id']) === true) {
-            console.log(`Joining room ${data['room-id']} and emitting room_joined socket event`);
             socket.join(data['room-id']);
             socket.broadcast.in(data['room-id']).emit('room-joined', data);
         }
         else {
-            console.log(`Creating room ${data['room-id']}`);
             socket.join(data['room-id']);
         }
     });
