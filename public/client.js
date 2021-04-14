@@ -7,6 +7,9 @@ let peerConnections = {};
 let roomId;
 let clientId;
 
+let muteaudio = false;
+let mutevideo = false;
+
 const mediaConstraints = {
     audio: {
         echoCancellation: true
@@ -56,6 +59,8 @@ async function createRoom(element) {
         await setLocalMedia();
         roomId = data['room-id'];
         document.querySelector('div#room-id').innerText = roomId;
+        document.getElementById('btn-join-room').disabled = true;
+        document.getElementById('btn-create-room').disabled = true;
         socket.emit('join', { 'room-id': roomId });
     }).catch(handleError);
 }
@@ -74,6 +79,8 @@ async function joinRoom() {
         if (response.status === 200) {
             await setLocalMedia();
             document.querySelector('div#room-id').innerText = roomId;
+            document.getElementById('btn-join-room').disabled = true;
+            document.getElementById('btn-create-room').disabled = true;
             return response.text();
         }
     }).then(data => {
@@ -81,7 +88,7 @@ async function joinRoom() {
     }).catch(handleError);
 }
 
-function getVideoElement(element_id, instance, labelName) {
+function getVideoElement(element_id, instance, labelName, isLocalVideo = false) {
     const videoDisplayDiv = document.querySelector('div#video-display');
     const innerDiv = document.createElement('div');
     innerDiv.setAttribute('class', 'col-md-4');
@@ -98,9 +105,71 @@ function getVideoElement(element_id, instance, labelName) {
     labelDiv.appendChild(label);
     innerDiv.appendChild(videoElement);
     innerDiv.appendChild(labelDiv);
+    if(isLocalVideo === true) {
+        const controlsDiv = document.createElement('div');
+        controlsDiv.classList.add('text-center');
+        controlsDiv.style.display = 'none';
+        controlsDiv.setAttribute('id', 'controls-div');
+        controlsDiv.style.zIndex = 1;
+        controlsDiv.style.position = 'absolute';
+        controlsDiv.style.backgroundColor = '#2921219e';
+        controlsDiv.style.color = 'white';
+        controlsDiv.style.marginLeft = '15px';
+        controlsDiv.style.width = '351px';
+        controlsDiv.style.fontSize = '40px';
+        controlsDiv.innerHTML = '<i class="fas fa-microphone" aria-hidden="true"></i>' +
+            '<i class="fas fa-video pl-5"></i>';
+
+        innerDiv.addEventListener('mouseover', (mouseOverEvent) => {
+            controlsDiv.style.display = 'block';
+        });
+
+        innerDiv.addEventListener('mouseout', (mouseOutEvent) => {
+            controlsDiv.style.display = 'none';
+        });
+
+        controlsDiv.addEventListener('mouseover', (mouseOverEvent) => {
+            controlsDiv.style.display = 'block';
+        });
+
+        controlsDiv.addEventListener('mouseout', (mouseOutEvent) => {
+            controlsDiv.style.display = 'none';
+        });
+
+        controlsDiv.children[0].addEventListener('click', onClickAudioControl);
+        controlsDiv.children[1].addEventListener('click', onClickVideoControl);
+
+        videoDisplayDiv.appendChild(controlsDiv);
+    }
     videoDisplayDiv.appendChild(innerDiv);
 
     return videoElement;
+}
+
+function onClickAudioControl(audioControlElement) {
+    if(muteaudio) {
+        muteaudio = false;
+        localStream.getAudioTracks()[0].enabled = true;
+        audioControlElement.target.classList.replace('fa-microphone-slash', 'fa-microphone');
+    }
+    else {
+        muteaudio = true;
+        localStream.getAudioTracks()[0].enabled = false;
+        audioControlElement.target.classList.replace('fa-microphone', 'fa-microphone-slash');
+    }
+}
+
+function onClickVideoControl(videoControlElement) {
+    if(mutevideo) {
+        mutevideo = false;
+        localStream.getVideoTracks()[0].enabled = true;
+        videoControlElement.target.classList.replace('fa-video-slash', 'fa-video');
+    }
+    else {
+        mutevideo = true;
+        localStream.getVideoTracks()[0].enabled = false;
+        videoControlElement.target.classList.replace('fa-video', 'fa-video-slash');
+    }
 }
 
 async function setLocalMedia() {
@@ -115,7 +184,7 @@ async function setLocalMedia() {
         handleError(error);
     }
 
-    const localVideo = getVideoElement(clientId, 0, clientName);
+    const localVideo = getVideoElement(clientId, 0, clientName, true);
     localVideo.autoplay = true;
     localVideo.muted = true;
     localVideo.playsInline = true;
