@@ -65,7 +65,7 @@ io.on('connect', (socket) => {
     });
 });
 
-const port = process.env.PORT || 3300;
+const port = process.env.PORT || 3000;
 
 https.listen(port, () => {
     console.log(`Express server listening on port ${port}`)
