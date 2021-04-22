@@ -105,6 +105,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
     videoElement.style.width = '350px';
     videoElement.style.height = '262px';
     videoElement.style.objectFit = 'cover';
+    videoElement.style.transform = 'scaleX(-1)';
     const labelDiv = document.createElement('div');
     labelDiv.setAttribute('class', 'text-center');
     const label = document.createElement('label');
