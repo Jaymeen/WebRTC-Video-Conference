@@ -148,7 +148,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
 
         controlsDiv.children[0].addEventListener('click', onClickAudioControl);
         controlsDiv.children[1].addEventListener('click', onClickVideoControl);
-        controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
+        //controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
 
         videoDisplayDiv.appendChild(controlsDiv);
     }
