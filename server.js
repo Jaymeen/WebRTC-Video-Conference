@@ -20,8 +20,8 @@ app.get('/clientId', (req, res) => {
 });
 
 app.get('/createRoom', (req, res) => {
-    let newUUID = uuidv4();
-    // let newUUID = '123';
+    // let newUUID = uuidv4();
+    let newUUID = '123';
     return res.json({
         'room-id': newUUID
     });
@@ -38,6 +38,7 @@ app.get('/joinRoom', (req, res) => {
 });
 
 io.on('connect', (socket) => {
+
     socket.on('join', (data) => {
         if(io.sockets.adapter.rooms.has(data['room-id']) === true) {
             socket.join(data['room-id']);
@@ -46,6 +47,7 @@ io.on('connect', (socket) => {
         else {
             socket.join(data['room-id']);
         }
+        console.log(io.sockets.adapter.rooms);
     });
 
     socket.on('send-metadata', (data) => {
@@ -62,6 +64,13 @@ io.on('connect', (socket) => {
 
     socket.on('answer', (data) => {
         socket.broadcast.in(data['room-id']).emit('answer', data);
+    });
+
+    socket.on('disconnect', (data) => {
+        console.log('client disconnected');
+        console.log(io.sockets.adapter.rooms);
+        socket.disconnect();
+        console.log(io.sockets.adapter.rooms);
     });
 });
 
