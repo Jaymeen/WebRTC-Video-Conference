@@ -43,6 +43,8 @@ async function getUniqueId() {
 }
 
 async function createRoom(element) {
+    document.getElementById('btn-join-room').disabled = true;
+    document.getElementById('btn-create-room').disabled = true;
     setupSocket();
     clientName = document.querySelector('input#clientname-text').value;
 
@@ -55,17 +57,21 @@ async function createRoom(element) {
         if(response.status === 200) {
             return response.json();
         }
+        else {
+            document.getElementById('btn-join-room').disabled = false;
+            document.getElementById('btn-create-room').disabled = false;
+        }
     }).then(async data => {
         await setLocalMedia();
         roomId = data['room-id'];
         document.querySelector('div#room-id').innerText = roomId;
-        document.getElementById('btn-join-room').disabled = true;
-        document.getElementById('btn-create-room').disabled = true;
         socket.emit('join', { 'room-id': roomId });
     }).catch(handleError);
 }
 
 async function joinRoom() {
+    document.getElementById('btn-join-room').disabled = true;
+    document.getElementById('btn-create-room').disabled = true;
     setupSocket();
     roomId = document.querySelector('input#join-room-text').value;
     clientName = document.querySelector('input#clientname-text').value;
@@ -79,9 +85,11 @@ async function joinRoom() {
         if (response.status === 200) {
             await setLocalMedia();
             document.querySelector('div#room-id').innerText = roomId;
-            document.getElementById('btn-join-room').disabled = true;
-            document.getElementById('btn-create-room').disabled = true;
             return response.text();
+        }
+        else {
+            document.getElementById('btn-join-room').disabled = false;
+            document.getElementById('btn-create-room').disabled = false;
         }
     }).then(data => {
         socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
@@ -117,8 +125,9 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
         controlsDiv.style.marginLeft = '15px';
         controlsDiv.style.width = '351px';
         controlsDiv.style.fontSize = '40px';
-        controlsDiv.innerHTML = '<i class="fas fa-microphone" aria-hidden="true"></i>' +
-            '<i class="fas fa-video pl-5"></i>';
+        controlsDiv.innerHTML = '<i class="fas fa-microphone" style="cursor: pointer;"></i>' +
+            '<i class="fas fa-video ml-5" style="cursor: pointer;"></i>' +
+            '<i class="fas fa-phone-slash ml-5" style="color: orangered; cursor: pointer;"></i>';
 
         innerDiv.addEventListener('mouseover', (mouseOverEvent) => {
             controlsDiv.style.display = 'block';
@@ -138,6 +147,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
 
         controlsDiv.children[0].addEventListener('click', onClickAudioControl);
         controlsDiv.children[1].addEventListener('click', onClickVideoControl);
+        controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
 
         videoDisplayDiv.appendChild(controlsDiv);
     }
@@ -170,6 +180,43 @@ function onClickVideoControl(videoControlElement) {
         localStream.getVideoTracks()[0].enabled = false;
         videoControlElement.target.classList.replace('fa-video', 'fa-video-slash');
     }
+}
+
+function onClickDisconnectControl(disconnectControlElement) {
+    localStream.getTracks().forEach((track) => {
+        track.stop();
+    });
+
+    Object.keys(peerConnections).forEach((key) => {
+        peerConnections[key].pc.ontrack = null;
+        peerConnections[key].pc.onremovetrack = null;
+        peerConnections[key].pc.onicecandidate = null;
+        peerConnections[key].pc.oniceconnectionstatechange = null;
+        peerConnections[key].pc.onsignalingstatechange = null;
+        peerConnections[key].pc.onicegatheringstatechange = null;
+        peerConnections[key].pc.onnegotiationneeded = null;
+        peerConnections[key].pc.close();
+    });
+
+    peerConnections = {};
+
+    document.getElementById(clientId + '-0').srcObject = null;
+
+    let videoDisplayDiv = document.getElementById('video-display');
+    const containerDiv = videoDisplayDiv.parentNode;
+
+    videoDisplayDiv.remove();
+
+    videoDisplayDiv = document.createElement('div');
+    videoDisplayDiv.setAttribute('id', 'video-display');
+    videoDisplayDiv.classList.add('row', 'mt-5');
+    containerDiv.appendChild(videoDisplayDiv);
+
+    document.getElementById('btn-join-room').disabled = false;
+    document.getElementById('btn-create-room').disabled = false;
+    document.querySelector('div#room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+    document.querySelector('hr#horizontal-row').hidden = true;
+    document.querySelector('div#div-select').hidden = true;
 }
 
 async function setLocalMedia() {
