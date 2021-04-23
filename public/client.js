@@ -14,7 +14,14 @@ const mediaConstraints = {
     audio: {
         echoCancellation: true
     },
-    video: true,
+    video: {
+        width: {
+            exact: 640
+        },
+        height: {
+            exact: 360
+        }
+    },
 };
 
 const iceServers = {
@@ -148,7 +155,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
 
         controlsDiv.children[0].addEventListener('click', onClickAudioControl);
         controlsDiv.children[1].addEventListener('click', onClickVideoControl);
-        //controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
+        controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
 
         videoDisplayDiv.appendChild(controlsDiv);
     }
