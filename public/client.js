@@ -308,19 +308,20 @@ function checkPeerDisconnection(event, peerId) {
 
 // Changing Input Sources Functions
 function changeDevice() {
+    console.log('Inside Change Device')
     if(localStream) {
         localStream.getTracks().forEach(track => {
             track.stop();
         });
     }
-    const audioSource = document.querySelector('select#audio-input-source').value;
-    const videoSource = document.querySelector('select#video-input-source').value;
+    const audioSource = document.getElementById('audio-input-source');
+    const videoSource = document.getElementById('video-input-source');
     const constraints = {
-        audio: {deviceId: audioSource ? {exact: audioSource} : undefined},
-        video: {deviceId: videoSource ? {exact: videoSource} : undefined}
+        audio: {deviceId: audioSource.value ? {exact: audioSource.value} : undefined},
+        video: {deviceId: videoSource.value ? {exact: videoSource.value} : undefined}
     };
-    navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then((deiveInfo) => {
-        gotDevices(deviceInfo, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
+    navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then((deviceInfo) => {
+        gotDevices(deviceInfo, [audioSource, videoSource]);
     }).catch(handleError);
 }
 
@@ -360,10 +361,10 @@ function gotDevices(deviceInfos, selectors) {
         const option = document.createElement('option');
         option.value = deviceInfo.deviceId;
         if (deviceInfo.kind === 'audioinput') {
-            option.text = deviceInfo.label || `microphone ${audioInputSelect.length + 1}`;
+            option.text = deviceInfo.label || `microphone ${document.getElementById('audio-input-source').length + 1}`;
             document.getElementById('audio-input-source').appendChild(option);
         } else if (deviceInfo.kind === 'videoinput') {
-            option.text = deviceInfo.label || `camera ${videoSelect.length + 1}`;
+            option.text = deviceInfo.label || `camera ${document.getElementById('video-input-source').length + 1}`;
             document.getElementById('video-input-source').appendChild(option);
         }
     }
