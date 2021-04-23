@@ -63,6 +63,10 @@ io.on('connect', (socket) => {
     socket.on('answer', (data) => {
         socket.broadcast.in(data['room-id']).emit('answer', data);
     });
+
+    socket.on('disconnect', (data) => {
+        socket.disconnect();
+    });
 });
 
 const port = process.env.PORT || 3000;

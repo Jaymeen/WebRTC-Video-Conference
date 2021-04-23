@@ -105,6 +105,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
     videoElement.style.width = '350px';
     videoElement.style.height = '262px';
     videoElement.style.objectFit = 'cover';
+    videoElement.style.transform = 'scaleX(-1)';
     const labelDiv = document.createElement('div');
     labelDiv.setAttribute('class', 'text-center');
     const label = document.createElement('label');
@@ -147,7 +148,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
 
         controlsDiv.children[0].addEventListener('click', onClickAudioControl);
         controlsDiv.children[1].addEventListener('click', onClickVideoControl);
-        controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
+        //controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
 
         videoDisplayDiv.appendChild(controlsDiv);
     }
@@ -196,6 +197,7 @@ function onClickDisconnectControl(disconnectControlElement) {
         peerConnections[key].pc.onicegatheringstatechange = null;
         peerConnections[key].pc.onnegotiationneeded = null;
         peerConnections[key].pc.close();
+        delete peerConnections[key];
     });
 
     peerConnections = {};
@@ -217,6 +219,8 @@ function onClickDisconnectControl(disconnectControlElement) {
     document.querySelector('div#room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
     document.querySelector('hr#horizontal-row').hidden = true;
     document.querySelector('div#div-select').hidden = true;
+
+    socket.close();
 }
 
 async function setLocalMedia() {
@@ -249,7 +253,7 @@ async function setUpConnection(peerId, peerName, initiateCall = false) {
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
     addLocalStreamTracks(peerId);
     peerConnections[peerId].pc.onicecandidate = (iceCandidate) => { gatherIceCandidates(iceCandidate, peerId); };
-    peerConnections[peerId].pc.oniceconnectionstatechange = (event) => { checkPeerDisconnection(event, peerId); }
+    peerConnections[peerId].pc.oniceconnectionstatechange = (event) => { checkPeerDisconnection(event, peerId); };
 
     if(initiateCall === true) {
         await createOffer(peerId);
@@ -287,9 +291,9 @@ function checkPeerDisconnection(event, peerId) {
     let state = peerConnections[peerId].pc.iceConnectionState;
 
     if(state === 'failed' || state === 'closed' || state === 'disconnected') {
+        console.log('User : ' + peerId + ' Disconnected');
         delete peerConnections[peerId];
-        const elementToDelete = document.getElementById(peerId + '-0').parentElement;
-        elementToDelete.parentElement.removeChild(elementToDelete);
+        document.getElementById(peerId + '-0').parentElement.remove();
     }
 }
 
