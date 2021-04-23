@@ -16,10 +16,12 @@ const mediaConstraints = {
     },
     video: {
         width: {
-            exact: 640
+            max: 854,
+            min: 426
         },
         height: {
-            exact: 360
+            max: 480,
+            min: 240
         }
     },
 };
