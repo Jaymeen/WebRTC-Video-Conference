@@ -300,7 +300,6 @@ function checkPeerDisconnection(event, peerId) {
     let state = peerConnections[peerId].pc.iceConnectionState;
 
     if(state === 'failed' || state === 'closed' || state === 'disconnected') {
-        console.log('User : ' + peerId + ' Disconnected');
         delete peerConnections[peerId];
         document.getElementById(peerId + '-0').parentElement.remove();
     }
@@ -308,7 +307,6 @@ function checkPeerDisconnection(event, peerId) {
 
 // Changing Input Sources Functions
 function changeDevice() {
-    console.log('Inside Change Device')
     if(localStream) {
         localStream.getTracks().forEach(track => {
             track.stop();
