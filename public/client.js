@@ -10,20 +10,23 @@ let clientId;
 let muteaudio = false;
 let mutevideo = false;
 
+let tempNameArray = ['Jaymeen', 'Deepti', 'Alay', 'Akshil', 'Meghna', 'Parth', 'Poojan', 'Yashasvi', 'Anshul', 'Harsha', 'Siva',
+ 'Chakri', 'Akhil', 'Abhinav', 'Shubham', 'Soniya', 'Rachit'];
+
 const mediaConstraints = {
     audio: {
         echoCancellation: true
     },
     video: {
         width: {
-            max: 854,
+            max: 1920,
             min: 426
         },
         height: {
-            max: 480,
+            max: 1080,
             min: 240
         }
-    },
+    }
 };
 
 const iceServers = {
@@ -49,9 +52,11 @@ async function getUniqueId() {
     }).then(data => {
         clientId = data['client-id'];
     }).catch(handleError);
+
+    document.getElementById('clientname-text').value = tempNameArray[Math.floor(Math.random() * tempNameArray.length)];
 }
 
-async function createRoom(element) {
+async function createRoom() {
     document.getElementById('btn-join-room').disabled = true;
     document.getElementById('btn-create-room').disabled = true;
     setupSocket();
@@ -69,12 +74,18 @@ async function createRoom(element) {
         else {
             document.getElementById('btn-join-room').disabled = false;
             document.getElementById('btn-create-room').disabled = false;
+            return null;
         }
     }).then(async data => {
-        await setLocalMedia();
-        roomId = data['room-id'];
-        document.querySelector('div#room-id').innerText = roomId;
-        socket.emit('join', { 'room-id': roomId });
+        if(data) {
+            await setLocalMedia();
+            roomId = data['room-id'];
+            document.querySelector('div#room-id').innerText = roomId;
+            socket.emit('join', { 'room-id': roomId });
+        }
+        else {
+            socket.close();
+        }
     }).catch(handleError);
 }
 
@@ -105,11 +116,18 @@ async function joinRoom() {
         if(data) {
             socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
         }
+        else {
+            socket.close();
+        }
     }).catch(handleError);
 }
 
+function addNewStream() {
+
+}
+
 function getVideoElement(element_id, instance, labelName, isLocalVideo = false) {
-    const videoDisplayDiv = document.querySelector('div#video-display');
+    const videoDisplayDiv = document.getElementById('video-display');
     const innerDiv = document.createElement('div');
     innerDiv.setAttribute('class', 'col-md-4');
     const videoElement = document.createElement('video');
@@ -117,15 +135,12 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
     videoElement.style.width = '350px';
     videoElement.style.height = '262px';
     videoElement.style.objectFit = 'cover';
-    videoElement.style.transform = 'scaleX(-1)';
     const labelDiv = document.createElement('div');
     labelDiv.setAttribute('class', 'text-center');
     const label = document.createElement('label');
     label.setAttribute('for', element_id + '-' + instance);
     label.innerText = labelName;
     labelDiv.appendChild(label);
-    innerDiv.appendChild(videoElement);
-    innerDiv.appendChild(labelDiv);
     if(isLocalVideo === true) {
         const controlsDiv = document.createElement('div');
         controlsDiv.classList.add('text-center');
@@ -135,8 +150,7 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
         controlsDiv.style.position = 'absolute';
         controlsDiv.style.backgroundColor = '#2921219e';
         controlsDiv.style.color = 'white';
-        controlsDiv.style.marginLeft = '15px';
-        controlsDiv.style.width = '351px';
+        controlsDiv.style.width = '350px';
         controlsDiv.style.fontSize = '40px';
         controlsDiv.innerHTML = '<i class="fas fa-microphone" style="cursor: pointer;"></i>' +
             '<i class="fas fa-video ml-5" style="cursor: pointer;"></i>' +
@@ -162,8 +176,12 @@ function getVideoElement(element_id, instance, labelName, isLocalVideo = false) 
         controlsDiv.children[1].addEventListener('click', onClickVideoControl);
         controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
 
-        videoDisplayDiv.appendChild(controlsDiv);
+        videoElement.style.transform = 'scaleX(-1)';
+        innerDiv.appendChild(controlsDiv);
     }
+
+    innerDiv.appendChild(videoElement);
+    innerDiv.appendChild(labelDiv);
     videoDisplayDiv.appendChild(innerDiv);
 
     return videoElement;
@@ -228,24 +246,27 @@ function onClickDisconnectControl(disconnectControlElement) {
 
     document.getElementById('btn-join-room').disabled = false;
     document.getElementById('btn-create-room').disabled = false;
-    document.querySelector('div#room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
-    document.querySelector('hr#horizontal-row').hidden = true;
-    document.querySelector('div#div-select').hidden = true;
+    document.getElementById('room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+    document.getElementById('horizontal-row').hidden = true;
+    document.getElementById('div-select').hidden = true;
+    document.getElementById('join-room-text').value = '';
 
+    socket.emit('end-call', { 'room-id': roomId, 'client-id': clientId });
     socket.close();
+    socket = null;
 }
 
 async function setLocalMedia() {
-    navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
-        gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
-    }).catch(handleError);
-
     try {
         localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     }
     catch(error) {
         handleError(error);
     }
+
+    navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
+        gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
+    }).catch(handleError);
 
     const localVideo = getVideoElement(clientId, 0, clientName, true);
     localVideo.autoplay = true;
@@ -259,7 +280,6 @@ async function setLocalMedia() {
 async function setUpConnection(peerId, peerName, initiateCall = false) {
     const videoElement = getVideoElement(peerId, 0, peerName);
     videoElement.autoplay = true;
-    // videoElement.muted = true;
     videoElement.playsInline = true;
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
@@ -300,11 +320,13 @@ function gatherIceCandidates(iceCandidate, peerId) {
 }
 
 function checkPeerDisconnection(event, peerId) {
-    let state = peerConnections[peerId].pc.iceConnectionState;
+    if(peerConnections[peerId]) {
+        let state = peerConnections[peerId].pc.iceConnectionState;
 
-    if(state === 'failed' || state === 'closed' || state === 'disconnected') {
-        delete peerConnections[peerId];
-        document.getElementById(peerId + '-0').parentElement.remove();
+        if(state === 'failed' || state === 'closed' || state === 'disconnected') {
+            delete peerConnections[peerId];
+            document.getElementById(peerId + '-0').parentElement.remove();
+        }
     }
 }
 
@@ -384,6 +406,7 @@ function setupSocket() {
     socket.on('send-metadata', onMetaData);
     socket.on('offer', onOffer);
     socket.on('answer', onAnswer);
+    socket.on('end-call', onEndCall);
 }
 
 async function onRoomJoined(data) {
@@ -438,7 +461,12 @@ async function onAnswer(data) {
     }
 }
 
+function onEndCall(data) {
+    delete peerConnections[data['client-id']];
+    document.getElementById(data['client-id'] + '-0').parentElement.remove();
+}
+
 // Error Functions
-function handleError(error) {
+function handleError(err) {
     console.log('An Error Occurred : ' + error);
 }

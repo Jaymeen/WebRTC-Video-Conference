@@ -20,8 +20,8 @@ app.get('/clientId', (req, res) => {
 });
 
 app.get('/createRoom', (req, res) => {
-    let newUUID = uuidv4();
-    // let newUUID = '123';
+    // let newUUID = uuidv4();
+    let newUUID = '123';
     return res.json({
         'room-id': newUUID
     });
@@ -64,8 +64,16 @@ io.on('connect', (socket) => {
         socket.broadcast.in(data['room-id']).emit('answer', data);
     });
 
-    socket.on('disconnect', (data) => {
-        socket.disconnect();
+    socket.on('end-call', (data) => {
+        console.log(io.sockets.adapter.rooms);
+        socket.broadcast.in(data['room-id']).emit('end-call', data);
+        socket.leave(data['room-id']);
+        console.log(io.sockets.adapter.rooms);
+    });
+
+    socket.on('disconnect', (reason) => {
+        socket.disconnect(true);
+        console.log(io.sockets.adapter.rooms);
     });
 });
 
