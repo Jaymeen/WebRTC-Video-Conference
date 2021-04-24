@@ -99,9 +99,12 @@ async function joinRoom() {
         else {
             document.getElementById('btn-join-room').disabled = false;
             document.getElementById('btn-create-room').disabled = false;
+            return null;
         }
     }).then(data => {
-        socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
+        if(data) {
+            socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
+        }
     }).catch(handleError);
 }
 
