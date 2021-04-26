@@ -116,10 +116,6 @@ async function joinRoom() {
     }).catch(handleError);
 }
 
-function addNewStream() {
-
-}
-
 function getLabelElement(labelText, labelFor) {
     const parentDiv = document.createElement('div');
     const labelElement = document.createElement('label');
