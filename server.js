@@ -64,8 +64,13 @@ io.on('connect', (socket) => {
         socket.broadcast.in(data['room-id']).emit('answer', data);
     });
 
-    socket.on('disconnect', (data) => {
-        socket.disconnect();
+    socket.on('end-call', (data) => {
+        socket.broadcast.in(data['room-id']).emit('end-call', data);
+        socket.leave(data['room-id']);
+    });
+
+    socket.on('disconnect', (reason) => {
+        socket.disconnect(true);
     });
 });
 

@@ -1,7 +1,6 @@
-let socket;
 window.onload = getUniqueId();
+let socket;
 let clientName;
-
 let localStream;
 let peerConnections = {};
 let roomId;
@@ -16,14 +15,14 @@ const mediaConstraints = {
     },
     video: {
         width: {
-            max: 854,
+            max: 1920,
             min: 426
         },
         height: {
-            max: 480,
+            max: 1080,
             min: 240
         }
-    },
+    }
 };
 
 const iceServers = {
@@ -51,7 +50,7 @@ async function getUniqueId() {
     }).catch(handleError);
 }
 
-async function createRoom(element) {
+async function createRoom() {
     document.getElementById('btn-join-room').disabled = true;
     document.getElementById('btn-create-room').disabled = true;
     setupSocket();
@@ -69,12 +68,18 @@ async function createRoom(element) {
         else {
             document.getElementById('btn-join-room').disabled = false;
             document.getElementById('btn-create-room').disabled = false;
+            return null;
         }
     }).then(async data => {
-        await setLocalMedia();
-        roomId = data['room-id'];
-        document.querySelector('div#room-id').innerText = roomId;
-        socket.emit('join', { 'room-id': roomId });
+        if(data) {
+            await setLocalMedia();
+            roomId = data['room-id'];
+            document.querySelector('div#room-id').innerText = roomId;
+            socket.emit('join', { 'room-id': roomId });
+        }
+        else {
+            socket.close();
+        }
     }).catch(handleError);
 }
 
@@ -105,68 +110,91 @@ async function joinRoom() {
         if(data) {
             socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
         }
+        else {
+            socket.close();
+        }
     }).catch(handleError);
 }
 
-function getVideoElement(element_id, instance, labelName, isLocalVideo = false) {
-    const videoDisplayDiv = document.querySelector('div#video-display');
-    const innerDiv = document.createElement('div');
-    innerDiv.setAttribute('class', 'col-md-4');
-    const videoElement = document.createElement('video');
-    videoElement.setAttribute('id', element_id + '-' + instance);
-    videoElement.style.width = '350px';
-    videoElement.style.height = '262px';
-    videoElement.style.objectFit = 'cover';
-    videoElement.style.transform = 'scaleX(-1)';
-    const labelDiv = document.createElement('div');
-    labelDiv.setAttribute('class', 'text-center');
-    const label = document.createElement('label');
-    label.setAttribute('for', element_id + '-' + instance);
-    label.innerText = labelName;
-    labelDiv.appendChild(label);
-    innerDiv.appendChild(videoElement);
-    innerDiv.appendChild(labelDiv);
-    if(isLocalVideo === true) {
-        const controlsDiv = document.createElement('div');
-        controlsDiv.classList.add('text-center');
+function getLabelElement(labelText, labelFor) {
+    const parentDiv = document.createElement('div');
+    const labelElement = document.createElement('label');
+
+    parentDiv.classList.add('text-center');
+
+    labelElement.setAttribute('for', labelFor);
+    labelElement.innerText = labelText;
+
+    parentDiv.appendChild(labelElement);
+
+    return parentDiv;
+}
+
+function getControlsDiv() {
+    const controlsDiv = document.createElement('div');
+    const toggleMicrophone = document.createElement('i');
+    const toggleVideo = document.createElement('i');
+    const disconnectCall = document.createElement('i');
+
+    controlsDiv.classList.add('controls');
+    toggleMicrophone.classList.add('fas', 'fa-microphone');
+    toggleVideo.classList.add('fas', 'fa-video', 'ml-5');
+    disconnectCall.classList.add('fas', 'fa-phone-slash', 'ml-5', 'redcontrol');
+
+    controlsDiv.addEventListener('mouseover', (mouseOverEvent) => {
+        controlsDiv.style.display = 'block';
+    });
+
+    controlsDiv.addEventListener('mouseout', (mouseOutEvent) => {
         controlsDiv.style.display = 'none';
-        controlsDiv.setAttribute('id', 'controls-div');
-        controlsDiv.style.zIndex = 1;
-        controlsDiv.style.position = 'absolute';
-        controlsDiv.style.backgroundColor = '#2921219e';
-        controlsDiv.style.color = 'white';
-        controlsDiv.style.marginLeft = '15px';
-        controlsDiv.style.width = '351px';
-        controlsDiv.style.fontSize = '40px';
-        controlsDiv.innerHTML = '<i class="fas fa-microphone" style="cursor: pointer;"></i>' +
-            '<i class="fas fa-video ml-5" style="cursor: pointer;"></i>' +
-            '<i class="fas fa-phone-slash ml-5" style="color: orangered; cursor: pointer;"></i>';
+    });
 
-        innerDiv.addEventListener('mouseover', (mouseOverEvent) => {
-            controlsDiv.style.display = 'block';
-        });
+    toggleMicrophone.addEventListener('click', onClickAudioControl);
+    toggleVideo.addEventListener('click', onClickVideoControl);
+    disconnectCall.addEventListener('click', onClickDisconnectControl);
 
-        innerDiv.addEventListener('mouseout', (mouseOutEvent) => {
-            controlsDiv.style.display = 'none';
-        });
+    controlsDiv.appendChild(toggleMicrophone);
+    controlsDiv.appendChild(toggleVideo);
+    controlsDiv.appendChild(disconnectCall);
 
-        controlsDiv.addEventListener('mouseover', (mouseOverEvent) => {
-            controlsDiv.style.display = 'block';
-        });
+    return controlsDiv;
+}
 
-        controlsDiv.addEventListener('mouseout', (mouseOutEvent) => {
-            controlsDiv.style.display = 'none';
-        });
+function createVideoElement(videoMetaData, constraints, display = true) {
+    const parentDiv = document.createElement('div');
+    const videoElement = document.createElement('video');
 
-        controlsDiv.children[0].addEventListener('click', onClickAudioControl);
-        controlsDiv.children[1].addEventListener('click', onClickVideoControl);
-        controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
+    parentDiv.classList.add('col-md-4');
 
-        videoDisplayDiv.appendChild(controlsDiv);
+    if(display === false) {
+        parentDiv.style.display = 'none';
     }
-    videoDisplayDiv.appendChild(innerDiv);
 
-    return videoElement;
+    videoElement.setAttribute('id', videoMetaData['video-id'] + '-' + videoMetaData['video-instance']);
+    videoElement.playsInline = constraints['playsInline'];
+    videoElement.muted = constraints['muted'];
+    videoElement.autoplay = constraints['autoplay'];
+
+    if(constraints['local'] === true) {
+        const controlsDiv = getControlsDiv();
+
+        parentDiv.addEventListener('mouseover', (mouseOverEvent) => {
+            controlsDiv.style.display = 'block';
+        });
+
+        parentDiv.addEventListener('mouseout', (mouseOutEvent) => {
+            controlsDiv.style.display = 'none';
+        });
+
+        parentDiv.appendChild(controlsDiv);
+
+        videoElement.classList.add('transformX');
+        videoElement.srcObject = localStream;
+    }
+
+    parentDiv.appendChild(videoElement);
+    parentDiv.appendChild(getLabelElement(videoMetaData['video-tag'], videoElement.id));
+    document.getElementById('video-display').appendChild(parentDiv);
 }
 
 function onClickAudioControl(audioControlElement) {
@@ -228,18 +256,17 @@ function onClickDisconnectControl(disconnectControlElement) {
 
     document.getElementById('btn-join-room').disabled = false;
     document.getElementById('btn-create-room').disabled = false;
-    document.querySelector('div#room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
-    document.querySelector('hr#horizontal-row').hidden = true;
-    document.querySelector('div#div-select').hidden = true;
+    document.getElementById('room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+    document.getElementById('horizontal-row').hidden = true;
+    document.getElementById('div-select').hidden = true;
+    document.getElementById('join-room-text').value = '';
 
+    socket.emit('end-call', { 'room-id': roomId, 'client-id': clientId });
     socket.close();
+    socket = null;
 }
 
 async function setLocalMedia() {
-    navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
-        gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
-    }).catch(handleError);
-
     try {
         localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     }
@@ -247,20 +274,43 @@ async function setLocalMedia() {
         handleError(error);
     }
 
-    const localVideo = getVideoElement(clientId, 0, clientName, true);
-    localVideo.autoplay = true;
-    localVideo.muted = true;
-    localVideo.playsInline = true;
-    localVideo.srcObject = localStream;
-    document.querySelector('hr#horizontal-row').hidden = false;
-    document.querySelector('div#div-select').hidden = false;
+    navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
+        gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
+    }).catch(handleError);
+
+    const videoMetaData = {
+        'video-tag': clientName,
+        'video-id': clientId,
+        'video-instance': 0
+    };
+
+    const constraints = {
+        'autoplay': true,
+        'muted': true,
+        'local': true,
+        'playsInLine': true
+    };
+
+    createVideoElement(videoMetaData, constraints);
+    document.getElementById('horizontal-row').hidden = false;
+    document.getElementById('div-select').hidden = false;
 }
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
-    const videoElement = getVideoElement(peerId, 0, peerName);
-    videoElement.autoplay = true;
-    // videoElement.muted = true;
-    videoElement.playsInline = true;
+    const videoMetaData = {
+        'video-tag': peerName,
+        'video-id': peerId,
+        'video-instance': 0
+    };
+
+    const constraints = {
+        'autoplay': true,
+        'muted': false,
+        'local': false,
+        'playsInLine': true
+    };
+
+    createVideoElement(videoMetaData, constraints);
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
     addLocalStreamTracks(peerId);
@@ -300,11 +350,13 @@ function gatherIceCandidates(iceCandidate, peerId) {
 }
 
 function checkPeerDisconnection(event, peerId) {
-    let state = peerConnections[peerId].pc.iceConnectionState;
+    if(peerConnections[peerId]) {
+        let state = peerConnections[peerId].pc.iceConnectionState;
 
-    if(state === 'failed' || state === 'closed' || state === 'disconnected') {
-        delete peerConnections[peerId];
-        document.getElementById(peerId + '-0').parentElement.remove();
+        if(state === 'failed' || state === 'closed' || state === 'disconnected') {
+            delete peerConnections[peerId];
+            document.getElementById(peerId + '-0').parentElement.remove();
+        }
     }
 }
 
@@ -384,6 +436,7 @@ function setupSocket() {
     socket.on('send-metadata', onMetaData);
     socket.on('offer', onOffer);
     socket.on('answer', onAnswer);
+    socket.on('end-call', onEndCall);
 }
 
 async function onRoomJoined(data) {
@@ -436,6 +489,11 @@ async function onAnswer(data) {
             handleError(error);
         }
     }
+}
+
+function onEndCall(data) {
+    delete peerConnections[data['client-id']];
+    document.getElementById(data['client-id'] + '-0').parentElement.remove();
 }
 
 // Error Functions
