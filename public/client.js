@@ -1,7 +1,7 @@
-let socket;
 window.onload = getUniqueId();
+let socket;
 let clientName;
-
+let instances = 0;
 let localStream;
 let peerConnections = {};
 let roomId;
@@ -9,9 +9,6 @@ let clientId;
 
 let muteaudio = false;
 let mutevideo = false;
-
-let tempNameArray = ['Jaymeen', 'Deepti', 'Alay', 'Akshil', 'Meghna', 'Parth', 'Poojan', 'Yashasvi', 'Anshul', 'Harsha', 'Siva',
- 'Chakri', 'Akhil', 'Abhinav', 'Shubham', 'Soniya', 'Rachit'];
 
 const mediaConstraints = {
     audio: {
@@ -52,8 +49,6 @@ async function getUniqueId() {
     }).then(data => {
         clientId = data['client-id'];
     }).catch(handleError);
-
-    document.getElementById('clientname-text').value = tempNameArray[Math.floor(Math.random() * tempNameArray.length)];
 }
 
 async function createRoom() {
