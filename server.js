@@ -13,10 +13,7 @@ const uniqid = require('uniqid');
 
 app.use(express.static('./public'));
 
-let i = 0;
-
 app.get('/clientId', (req, res) => {
-    i = (i + 1) % 2;
     return res.json({
         'client-id': uniqid('cli-')
     });
