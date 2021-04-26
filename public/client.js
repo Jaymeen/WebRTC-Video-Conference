@@ -1,7 +1,6 @@
 window.onload = getUniqueId();
 let socket;
 let clientName;
-let instances = 0;
 let localStream;
 let peerConnections = {};
 let roomId;
@@ -502,6 +501,6 @@ function onEndCall(data) {
 }
 
 // Error Functions
-function handleError(err) {
-    console.log('An Error Occurred : ' + err);
+function handleError(error) {
+    console.log('An Error Occurred : ' + error);
 }
