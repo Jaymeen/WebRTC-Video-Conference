@@ -18,8 +18,7 @@ let i = 0;
 app.get('/clientId', (req, res) => {
     i = (i + 1) % 2;
     return res.json({
-        // 'client-id': uniqid('cli-')
-        'client-id': i
+        'client-id': uniqid('cli-')
     });
 });
 
@@ -66,10 +65,6 @@ io.on('connect', (socket) => {
 
     socket.on('answer', (data) => {
         socket.broadcast.in(data['room-id']).emit('answer', data);
-    });
-
-    socket.on('new-stream', (data) => {
-        socket.broadcast.in(data['room-id']).emit('new-stream', data);
     });
 
     socket.on('end-call', (data) => {

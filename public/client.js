@@ -322,7 +322,6 @@ async function setUpConnection(peerId, peerName, initiateCall = false) {
 
     createVideoElement(videoMetaData, constraints);
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
-    peerConnections[peerId].pc.onnegotiationneeded = (negotiation) => { negotiate(negotiation, peerId); }
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
     addLocalStreamTracks(peerId);
     peerConnections[peerId].pc.onicecandidate = (iceCandidate) => { gatherIceCandidates(iceCandidate, peerId); };
@@ -355,7 +354,6 @@ async function setRemoteStream(track, peerId) {
 }
 
 function gatherIceCandidates(iceCandidate, peerId) {
-    console.log('inside gathericecandidate with peer Id : ' + peerId);
     if(iceCandidate.candidate != null) {
         socket.emit('ice-candidate', {'ice-candidate': iceCandidate.candidate, 'room-id': roomId, 'client-id': clientId, 'peer-id': peerId });
     }
@@ -364,18 +362,12 @@ function gatherIceCandidates(iceCandidate, peerId) {
 function checkPeerDisconnection(event, peerId) {
     if(peerConnections[peerId]) {
         let state = peerConnections[peerId].pc.iceConnectionState;
-        console.log(`Disconnected : ${ peerConnections[peerId]['peer-name'] }`);
-        console.log(peerConnections[peerId].pc);
 
         if(state === 'failed' || state === 'closed' || state === 'disconnected') {
             delete peerConnections[peerId];
             document.getElementById(peerId + '-0').parentElement.remove();
         }
     }
-}
-
-async function negotiate(negotiation, peerId) {
-    console.log('Negotiation Needed');
 }
 
 // Changing Input Sources Functions
