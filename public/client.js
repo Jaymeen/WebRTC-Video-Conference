@@ -126,65 +126,85 @@ function addNewStream() {
 
 }
 
-function getVideoElement(element_id, instance, labelName, isLocalVideo = false) {
-    const videoDisplayDiv = document.getElementById('video-display');
-    const innerDiv = document.createElement('div');
-    innerDiv.setAttribute('class', 'col-md-4');
-    const videoElement = document.createElement('video');
-    videoElement.setAttribute('id', element_id + '-' + instance);
-    videoElement.style.width = '350px';
-    videoElement.style.height = '262px';
-    videoElement.style.objectFit = 'cover';
-    const labelDiv = document.createElement('div');
-    labelDiv.setAttribute('class', 'text-center');
-    const label = document.createElement('label');
-    label.setAttribute('for', element_id + '-' + instance);
-    label.innerText = labelName;
-    labelDiv.appendChild(label);
-    if(isLocalVideo === true) {
-        const controlsDiv = document.createElement('div');
-        controlsDiv.classList.add('text-center');
+function getLabelElement(labelText, labelFor) {
+    const parentDiv = document.createElement('div');
+    const labelElement = document.createElement('label');
+
+    parentDiv.classList.add('text-center');
+
+    labelElement.setAttribute('for', labelFor);
+    labelElement.innerText = labelText;
+
+    parentDiv.appendChild(labelElement);
+
+    return parentDiv;
+}
+
+function getControlsDiv() {
+    const controlsDiv = document.createElement('div');
+    const toggleMicrophone = document.createElement('i');
+    const toggleVideo = document.createElement('i');
+    const disconnectCall = document.createElement('i');
+
+    controlsDiv.classList.add('controls');
+    toggleMicrophone.classList.add('fas', 'fa-microphone');
+    toggleVideo.classList.add('fas', 'fa-video', 'ml-5');
+    disconnectCall.classList.add('fas', 'fa-phone-slash', 'ml-5', 'redcontrol');
+
+    controlsDiv.addEventListener('mouseover', (mouseOverEvent) => {
+        controlsDiv.style.display = 'block';
+    });
+
+    controlsDiv.addEventListener('mouseout', (mouseOutEvent) => {
         controlsDiv.style.display = 'none';
-        controlsDiv.setAttribute('id', 'controls-div');
-        controlsDiv.style.zIndex = 1;
-        controlsDiv.style.position = 'absolute';
-        controlsDiv.style.backgroundColor = '#2921219e';
-        controlsDiv.style.color = 'white';
-        controlsDiv.style.width = '350px';
-        controlsDiv.style.fontSize = '40px';
-        controlsDiv.innerHTML = '<i class="fas fa-microphone" style="cursor: pointer;"></i>' +
-            '<i class="fas fa-video ml-5" style="cursor: pointer;"></i>' +
-            '<i class="fas fa-phone-slash ml-5" style="color: orangered; cursor: pointer;"></i>';
+    });
 
-        innerDiv.addEventListener('mouseover', (mouseOverEvent) => {
-            controlsDiv.style.display = 'block';
-        });
+    toggleMicrophone.addEventListener('click', onClickAudioControl);
+    toggleVideo.addEventListener('click', onClickVideoControl);
+    disconnectCall.addEventListener('click', onClickDisconnectControl);
 
-        innerDiv.addEventListener('mouseout', (mouseOutEvent) => {
-            controlsDiv.style.display = 'none';
-        });
+    controlsDiv.appendChild(toggleMicrophone);
+    controlsDiv.appendChild(toggleVideo);
+    controlsDiv.appendChild(disconnectCall);
 
-        controlsDiv.addEventListener('mouseover', (mouseOverEvent) => {
-            controlsDiv.style.display = 'block';
-        });
+    return controlsDiv;
+}
 
-        controlsDiv.addEventListener('mouseout', (mouseOutEvent) => {
-            controlsDiv.style.display = 'none';
-        });
+function createVideoElement(videoMetaData, constraints, display = true) {
+    const parentDiv = document.createElement('div');
+    const videoElement = document.createElement('video');
 
-        controlsDiv.children[0].addEventListener('click', onClickAudioControl);
-        controlsDiv.children[1].addEventListener('click', onClickVideoControl);
-        controlsDiv.children[2].addEventListener('click', onClickDisconnectControl);
+    parentDiv.classList.add('col-md-4');
 
-        videoElement.style.transform = 'scaleX(-1)';
-        innerDiv.appendChild(controlsDiv);
+    if(display === false) {
+        parentDiv.style.display = 'none';
     }
 
-    innerDiv.appendChild(videoElement);
-    innerDiv.appendChild(labelDiv);
-    videoDisplayDiv.appendChild(innerDiv);
+    videoElement.setAttribute('id', videoMetaData['video-id'] + '-' + videoMetaData['video-instance']);
+    videoElement.playsInline = constraints['playsInline'];
+    videoElement.muted = constraints['muted'];
+    videoElement.autoplay = constraints['autoplay'];
 
-    return videoElement;
+    if(constraints['local'] === true) {
+        const controlsDiv = getControlsDiv();
+
+        parentDiv.addEventListener('mouseover', (mouseOverEvent) => {
+            controlsDiv.style.display = 'block';
+        });
+
+        parentDiv.addEventListener('mouseout', (mouseOutEvent) => {
+            controlsDiv.style.display = 'none';
+        });
+
+        parentDiv.appendChild(controlsDiv);
+
+        videoElement.classList.add('transformX');
+        videoElement.srcObject = localStream;
+    }
+
+    parentDiv.appendChild(videoElement);
+    parentDiv.appendChild(getLabelElement(videoMetaData['video-tag'], videoElement.id));
+    document.getElementById('video-display').appendChild(parentDiv);
 }
 
 function onClickAudioControl(audioControlElement) {
@@ -268,20 +288,41 @@ async function setLocalMedia() {
         gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
     }).catch(handleError);
 
-    const localVideo = getVideoElement(clientId, 0, clientName, true);
-    localVideo.autoplay = true;
-    localVideo.muted = true;
-    localVideo.playsInline = true;
-    localVideo.srcObject = localStream;
-    document.querySelector('hr#horizontal-row').hidden = false;
-    document.querySelector('div#div-select').hidden = false;
+    const videoMetaData = {
+        'video-tag': clientName,
+        'video-id': clientId,
+        'video-instance': 0
+    };
+
+    const constraints = {
+        'autoplay': true,
+        'muted': true,
+        'local': true,
+        'playsInLine': true
+    };
+
+    createVideoElement(videoMetaData, constraints);
+    document.getElementById('horizontal-row').hidden = false;
+    document.getElementById('div-select').hidden = false;
 }
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
-    const videoElement = getVideoElement(peerId, 0, peerName);
-    videoElement.autoplay = true;
-    videoElement.playsInline = true;
+    const videoMetaData = {
+        'video-tag': peerName,
+        'video-id': peerId,
+        'video-instance': 0
+    };
+
+    const constraints = {
+        'autoplay': true,
+        'muted': false,
+        'local': false,
+        'playsInLine': true
+    };
+
+    createVideoElement(videoMetaData, constraints);
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
+    peerConnections[peerId].pc.onnegotiationneeded = (negotiation) => { negotiate(negotiation, peerId); }
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
     addLocalStreamTracks(peerId);
     peerConnections[peerId].pc.onicecandidate = (iceCandidate) => { gatherIceCandidates(iceCandidate, peerId); };
@@ -314,6 +355,7 @@ async function setRemoteStream(track, peerId) {
 }
 
 function gatherIceCandidates(iceCandidate, peerId) {
+    console.log('inside gathericecandidate with peer Id : ' + peerId);
     if(iceCandidate.candidate != null) {
         socket.emit('ice-candidate', {'ice-candidate': iceCandidate.candidate, 'room-id': roomId, 'client-id': clientId, 'peer-id': peerId });
     }
@@ -322,12 +364,18 @@ function gatherIceCandidates(iceCandidate, peerId) {
 function checkPeerDisconnection(event, peerId) {
     if(peerConnections[peerId]) {
         let state = peerConnections[peerId].pc.iceConnectionState;
+        console.log(`Disconnected : ${ peerConnections[peerId]['peer-name'] }`);
+        console.log(peerConnections[peerId].pc);
 
         if(state === 'failed' || state === 'closed' || state === 'disconnected') {
             delete peerConnections[peerId];
             document.getElementById(peerId + '-0').parentElement.remove();
         }
     }
+}
+
+async function negotiate(negotiation, peerId) {
+    console.log('Negotiation Needed');
 }
 
 // Changing Input Sources Functions
@@ -468,5 +516,5 @@ function onEndCall(data) {
 
 // Error Functions
 function handleError(err) {
-    console.log('An Error Occurred : ' + error);
+    console.log('An Error Occurred : ' + err);
 }
