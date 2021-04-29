@@ -2,6 +2,7 @@ window.onload = getUniqueId();
 let socket;
 let clientName;
 let localStream;
+let tempStream;
 let peerConnections = {};
 let roomId;
 let clientId;
@@ -116,6 +117,37 @@ async function joinRoom() {
     }).catch(handleError);
 }
 
+async function addStream() {
+    try {
+        tempStream = await navigator.mediaDevices.getUserMedia({video: true});
+    }
+    catch (error) {
+        handleError(error);
+    }
+
+    Object.keys(peerConnections).forEach(key => {
+        peerConnections[key].pc.addTrack(tempStream.getVideoTracks()[0], tempStream);
+        createOffer(key);
+    });
+}
+
+function getVideoMetaData(videoTag, videoId, videoInstance) {
+    return {
+        'video-tag': videoTag,
+        'video-id': videoId,
+        'video-instance': videoInstance
+    }
+}
+
+function getVideoConstraints(autoplay, muted, local, playsInLine) {
+    return {
+        'autoplay': autoplay,
+        'muted': muted,
+        'local': local,
+        'playsInLine': playsInLine
+    }
+}
+
 function getLabelElement(labelText, labelFor) {
     const parentDiv = document.createElement('div');
     const labelElement = document.createElement('label');
@@ -160,7 +192,7 @@ function getControlsDiv() {
     return controlsDiv;
 }
 
-function createVideoElement(videoMetaData, constraints, display = true) {
+function getVideoElement(videoMetaData, constraints, display = true) {
     const parentDiv = document.createElement('div');
     const videoElement = document.createElement('video');
 
@@ -195,6 +227,8 @@ function createVideoElement(videoMetaData, constraints, display = true) {
     parentDiv.appendChild(videoElement);
     parentDiv.appendChild(getLabelElement(videoMetaData['video-tag'], videoElement.id));
     document.getElementById('video-display').appendChild(parentDiv);
+
+    return videoElement;
 }
 
 function onClickAudioControl(audioControlElement) {
@@ -278,39 +312,16 @@ async function setLocalMedia() {
         gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
     }).catch(handleError);
 
-    const videoMetaData = {
-        'video-tag': clientName,
-        'video-id': clientId,
-        'video-instance': 0
-    };
+    const videoMetaData = getVideoMetaData(clientName, clientId, 0);
+    const constraints = getVideoConstraints(true, true, true, true);
 
-    const constraints = {
-        'autoplay': true,
-        'muted': true,
-        'local': true,
-        'playsInLine': true
-    };
-
-    createVideoElement(videoMetaData, constraints);
+    const videoElement = getVideoElement(videoMetaData, constraints);
+    videoElement.srcObject = localStream;
     document.getElementById('horizontal-row').hidden = false;
     document.getElementById('div-select').hidden = false;
 }
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
-    const videoMetaData = {
-        'video-tag': peerName,
-        'video-id': peerId,
-        'video-instance': 0
-    };
-
-    const constraints = {
-        'autoplay': true,
-        'muted': false,
-        'local': false,
-        'playsInLine': true
-    };
-
-    createVideoElement(videoMetaData, constraints);
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
     peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
     addLocalStreamTracks(peerId);
@@ -338,9 +349,15 @@ function addLocalStreamTracks(peerId) {
         peerConnections[peerId].pc.addTrack(track, localStream);
     });
 }
-
-async function setRemoteStream(track, peerId) {
-    document.getElementById(peerId+'-0').srcObject = track.streams[0];
+let i = 0;
+async function setRemoteStream(trackEvent, peerId) {
+    if(trackEvent.track.kind === 'video') {
+        const videoMetaData = getVideoMetaData('peerName', peerId, i);
+        const constraints = getVideoConstraints(true, false, false, true);
+        const videoElement = getVideoElement(videoMetaData, constraints);
+        videoElement.srcObject = trackEvent.streams[0];
+        i++;
+    }
 }
 
 function gatherIceCandidates(iceCandidate, peerId) {
