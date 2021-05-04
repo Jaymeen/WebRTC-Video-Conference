@@ -22,9 +22,10 @@ video {
     width: 350px;
     height: 262px;
     object-fit: cover;
+    background-color: black;
 }
 
-video .transformX {
+video.transformX {
     transform: scaleX(-1);
 }
 
