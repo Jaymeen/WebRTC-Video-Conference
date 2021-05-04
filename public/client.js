@@ -420,7 +420,7 @@ function addLocalStreamTracks(peerId) {
     });
 }
 
-function setRemoteStream(trackEvent, peerId, peerName) {
+async function setRemoteStream(trackEvent, peerId, peerName) {
     let videoElement = document.getElementById(peerId.slice(-5) + '-' + trackEvent.streams[0].id);
 
     if(videoElement) {
@@ -549,14 +549,14 @@ function setupSocket() {
 }
 
 async function onRoomJoined(data) {
-    await setUpConnection(data['client-id'], data['client-name']);
     socket.emit('send-metadata', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId, 'peer-id': data['client-id'] });
+    await setUpConnection(data['client-id'], data['client-name'], true);
 }
 
 async function onMetaData(data) {
     if(data['peer-id'] === clientId) {
         try {
-            await setUpConnection(data['client-id'], data['client-name'], true);
+            await setUpConnection(data['client-id'], data['client-name']);
         }
         catch(error) {
             handleError(error);
