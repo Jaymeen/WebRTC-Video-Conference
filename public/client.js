@@ -1,13 +1,14 @@
 window.onload = getUniqueId();
 let socket;
 let clientName;
-let localStream;
+let localStreams = [];
+let instances = 0;
 let peerConnections = {};
 let roomId;
 let clientId;
 
-let muteaudio = false;
-let mutevideo = false;
+let audioMuted = [];
+let videoMuted = [];
 
 const mediaConstraints = {
     audio: {
@@ -36,7 +37,7 @@ const iceServers = {
 };
 
 async function getUniqueId() {
-    await fetch('/clientId', {
+    let responseData = await fetch('/clientId', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json;charset=utf-8'
@@ -45,18 +46,22 @@ async function getUniqueId() {
         if(response.status === 200) {
             return response.json();
         }
-    }).then(data => {
-        clientId = data['client-id'];
+        else {
+            return null;
+        }
     }).catch(handleError);
+
+    if(responseData) {
+        clientId = responseData['client-id'];
+    }
 }
 
 async function createRoom() {
-    document.getElementById('btn-join-room').disabled = true;
-    document.getElementById('btn-create-room').disabled = true;
+    toggleButtonDisability(true);
     setupSocket();
-    clientName = document.querySelector('input#clientname-text').value;
+    clientName = document.getElementById('clientname-text').value;
 
-    await fetch('/createRoom', {
+    let responseData = await fetch('/createRoom', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json;charset=utf-8'
@@ -66,54 +71,112 @@ async function createRoom() {
             return response.json();
         }
         else {
-            document.getElementById('btn-join-room').disabled = false;
-            document.getElementById('btn-create-room').disabled = false;
             return null;
         }
-    }).then(async data => {
-        if(data) {
-            await setLocalMedia();
-            roomId = data['room-id'];
-            document.querySelector('div#room-id').innerText = roomId;
-            socket.emit('join', { 'room-id': roomId });
-        }
-        else {
-            socket.close();
-        }
     }).catch(handleError);
+
+    if(responseData) {
+        await setLocalMedia();
+        roomId = roomId = responseData['room-id'];
+        document.getElementById('room-id').innerText = roomId;
+        socket.emit('join', { 'room-id': roomId });
+    }
+    else {
+        socket.close();
+        toggleButtonDisability(false);
+    }
 }
 
 async function joinRoom() {
-    document.getElementById('btn-join-room').disabled = true;
-    document.getElementById('btn-create-room').disabled = true;
+    toggleButtonDisability(true);
     setupSocket();
-    roomId = document.querySelector('input#join-room-text').value;
-    clientName = document.querySelector('input#clientname-text').value;
+    roomId = document.getElementById('join-room-text').value;
+    clientName = document.getElementById('clientname-text').value;
 
-    const output = await fetch('/joinRoom?roomId=' + roomId, {
+    let responseData = await fetch('/joinRoom?roomId=' + roomId, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json;charset=utf-8'
         }
     }).then(async response => {
         if (response.status === 200) {
-            await setLocalMedia();
-            document.querySelector('div#room-id').innerText = roomId;
             return response.text();
         }
         else {
-            document.getElementById('btn-join-room').disabled = false;
-            document.getElementById('btn-create-room').disabled = false;
             return null;
         }
-    }).then(data => {
-        if(data) {
-            socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
-        }
-        else {
-            socket.close();
-        }
     }).catch(handleError);
+
+    if(responseData) {
+        await setLocalMedia();
+        document.getElementById('room-id').innerText = roomId;
+        socket.emit('join', { 'room-id': roomId, 'client-name': clientName, 'client-id': clientId});
+    }
+    else {
+        socket.close();
+        toggleButtonDisability(false);
+    }
+}
+
+async function addStream() {
+    const instance = instances;
+    try {
+        await setLocalMedia(true, true);
+        if(Object.keys(peerConnections).length !== 0) {
+            Object.keys(peerConnections).forEach(key => {
+                localStreams[instance].getTracks().forEach((track) => {
+                    peerConnections[key].pc.addTrack(track, localStreams[instance]);
+                });
+                createOffer(key);
+            });
+        }
+    }
+    catch (error) {
+        handleError(error);
+    }
+}
+
+function toggleButtonDisability(disable) {
+    document.getElementById('btn-join-room').disabled = disable;
+    document.getElementById('btn-create-room').disabled = disable;
+}
+
+function getSelectDeviceOptions(videoEnabled, audioEnabled, instance) {
+    const selectAudio = document.createElement('select');
+    const selectVideo = document.createElement('select');
+
+    selectAudio.setAttribute('id', 'audio-source-' + instance);
+    selectVideo.setAttribute('id', 'video-source-' + instance);
+
+    selectAudio.classList.add('form-control', 'mb-2');
+    selectVideo.classList.add('form-control', 'mb-2');
+
+    selectAudio.disabled = audioEnabled;
+    selectVideo.disabled = videoEnabled;
+
+    selectAudio.addEventListener('change', changeDevice);
+    selectVideo.addEventListener('change', changeDevice);
+
+    return [selectAudio, selectVideo];
+}
+
+function getVideoMetaData(videoTag, videoId, videoInstance = null) {
+    return {
+        'video-tag': videoTag,
+        'video-id': videoId,
+        'video-instance': videoInstance
+    }
+}
+
+function getVideoConstraints(autoplay, muted, local, playsInLine, videoEnabled, audioEnabled) {
+    return {
+        'autoplay': autoplay,
+        'muted': muted,
+        'local': local,
+        'playsInLine': playsInLine,
+        'video-enabled': videoEnabled,
+        'audio-enabled': audioEnabled
+    }
 }
 
 function getLabelElement(labelText, labelFor) {
@@ -130,22 +193,25 @@ function getLabelElement(labelText, labelFor) {
     return parentDiv;
 }
 
-function getControlsDiv() {
+function getControlsDiv(instance) {
     const controlsDiv = document.createElement('div');
     const toggleMicrophone = document.createElement('i');
     const toggleVideo = document.createElement('i');
     const disconnectCall = document.createElement('i');
+
+    toggleMicrophone.setAttribute('id', 'mic-' + instance);
+    toggleVideo.setAttribute('id', 'vid-' + instance);
 
     controlsDiv.classList.add('controls');
     toggleMicrophone.classList.add('fas', 'fa-microphone');
     toggleVideo.classList.add('fas', 'fa-video', 'ml-5');
     disconnectCall.classList.add('fas', 'fa-phone-slash', 'ml-5', 'redcontrol');
 
-    controlsDiv.addEventListener('mouseover', (mouseOverEvent) => {
+    controlsDiv.addEventListener('mouseover', () => {
         controlsDiv.style.display = 'block';
     });
 
-    controlsDiv.addEventListener('mouseout', (mouseOutEvent) => {
+    controlsDiv.addEventListener('mouseout', () => {
         controlsDiv.style.display = 'none';
     });
 
@@ -160,7 +226,7 @@ function getControlsDiv() {
     return controlsDiv;
 }
 
-function createVideoElement(videoMetaData, constraints, display = true) {
+function getVideoElement(videoMetaData, constraints, display = true) {
     const parentDiv = document.createElement('div');
     const videoElement = document.createElement('video');
 
@@ -170,149 +236,160 @@ function createVideoElement(videoMetaData, constraints, display = true) {
         parentDiv.style.display = 'none';
     }
 
-    videoElement.setAttribute('id', videoMetaData['video-id'] + '-' + videoMetaData['video-instance']);
+    let videoId = videoMetaData['video-id'];
+
+    if(videoMetaData['video-instance'] !== null) {
+        videoId = videoId + '-' + videoMetaData['video-instance'];
+    }
+
+    videoElement.setAttribute('id', videoId);
     videoElement.playsInline = constraints['playsInline'];
     videoElement.muted = constraints['muted'];
     videoElement.autoplay = constraints['autoplay'];
 
     if(constraints['local'] === true) {
-        const controlsDiv = getControlsDiv();
+        const controlsDiv = getControlsDiv(videoMetaData['video-instance']);
 
-        parentDiv.addEventListener('mouseover', (mouseOverEvent) => {
+        videoElement.classList.add('transformX');
+
+        parentDiv.addEventListener('mouseover', () => {
             controlsDiv.style.display = 'block';
         });
 
-        parentDiv.addEventListener('mouseout', (mouseOutEvent) => {
+        parentDiv.addEventListener('mouseout', () => {
             controlsDiv.style.display = 'none';
         });
 
-        parentDiv.appendChild(controlsDiv);
+        const selections = getSelectDeviceOptions(constraints['video-enabled'], constraints['audio-enabled'],
+            videoMetaData['video-instance']);
 
-        videoElement.classList.add('transformX');
-        videoElement.srcObject = localStream;
+        parentDiv.appendChild(selections[0]);
+        parentDiv.appendChild(selections[1]);
+        parentDiv.appendChild(controlsDiv);
     }
 
     parentDiv.appendChild(videoElement);
     parentDiv.appendChild(getLabelElement(videoMetaData['video-tag'], videoElement.id));
-    document.getElementById('video-display').appendChild(parentDiv);
+
+    if(constraints['local'] === true) {
+        document.getElementById('local-video-display').appendChild(parentDiv);
+    }
+    else {
+        document.getElementById('remote-video-display').appendChild(parentDiv);
+    }
+
+    return videoElement;
 }
 
 function onClickAudioControl(audioControlElement) {
-    if(muteaudio) {
-        muteaudio = false;
-        localStream.getAudioTracks()[0].enabled = true;
+    const index = audioControlElement.target.id.split('-')[1];
+    if(audioMuted[index]) {
+        audioMuted[index] = false;
+        localStreams[index].getAudioTracks()[0].enabled = true;
         audioControlElement.target.classList.replace('fa-microphone-slash', 'fa-microphone');
     }
     else {
-        muteaudio = true;
-        localStream.getAudioTracks()[0].enabled = false;
+        audioMuted[index] = true;
+        localStreams[index].getAudioTracks()[0].enabled = false;
         audioControlElement.target.classList.replace('fa-microphone', 'fa-microphone-slash');
     }
 }
 
 function onClickVideoControl(videoControlElement) {
-    if(mutevideo) {
-        mutevideo = false;
-        localStream.getVideoTracks()[0].enabled = true;
+    const index = videoControlElement.target.id.split('-')[1];
+    if(videoMuted[index]) {
+        videoMuted[index] = false;
+        localStreams[index].getVideoTracks()[0].enabled = true;
         videoControlElement.target.classList.replace('fa-video-slash', 'fa-video');
     }
     else {
-        mutevideo = true;
-        localStream.getVideoTracks()[0].enabled = false;
+        videoMuted[index] = true;
+        localStreams[index].getVideoTracks()[0].enabled = false;
         videoControlElement.target.classList.replace('fa-video', 'fa-video-slash');
     }
 }
 
 function onClickDisconnectControl(disconnectControlElement) {
-    localStream.getTracks().forEach((track) => {
-        track.stop();
-    });
-
-    Object.keys(peerConnections).forEach((key) => {
-        peerConnections[key].pc.ontrack = null;
-        peerConnections[key].pc.onremovetrack = null;
-        peerConnections[key].pc.onicecandidate = null;
-        peerConnections[key].pc.oniceconnectionstatechange = null;
-        peerConnections[key].pc.onsignalingstatechange = null;
-        peerConnections[key].pc.onicegatheringstatechange = null;
-        peerConnections[key].pc.onnegotiationneeded = null;
-        peerConnections[key].pc.close();
-        delete peerConnections[key];
-    });
-
-    peerConnections = {};
-
-    document.getElementById(clientId + '-0').srcObject = null;
-
-    let videoDisplayDiv = document.getElementById('video-display');
-    const containerDiv = videoDisplayDiv.parentNode;
-
-    videoDisplayDiv.remove();
-
-    videoDisplayDiv = document.createElement('div');
-    videoDisplayDiv.setAttribute('id', 'video-display');
-    videoDisplayDiv.classList.add('row', 'mt-5');
-    containerDiv.appendChild(videoDisplayDiv);
-
-    document.getElementById('btn-join-room').disabled = false;
-    document.getElementById('btn-create-room').disabled = false;
-    document.getElementById('room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
-    document.getElementById('horizontal-row').hidden = true;
-    document.getElementById('div-select').hidden = true;
-    document.getElementById('join-room-text').value = '';
-
-    socket.emit('end-call', { 'room-id': roomId, 'client-id': clientId });
-    socket.close();
-    socket = null;
+    // Change this to remove tracks.
+    // localStream.getTracks().forEach((track) => {
+    //     track.stop();
+    // });
+    //
+    // Object.keys(peerConnections).forEach((key) => {
+    //     peerConnections[key].pc.ontrack = null;
+    //     peerConnections[key].pc.onremovetrack = null;
+    //     peerConnections[key].pc.onicecandidate = null;
+    //     peerConnections[key].pc.oniceconnectionstatechange = null;
+    //     peerConnections[key].pc.onsignalingstatechange = null;
+    //     peerConnections[key].pc.onicegatheringstatechange = null;
+    //     peerConnections[key].pc.onnegotiationneeded = null;
+    //     peerConnections[key].pc.close();
+    //     delete peerConnections[key];
+    // });
+    //
+    // peerConnections = {};
+    //
+    // document.getElementById(clientId + '-0').srcObject = null;
+    //
+    // let videoDisplayDiv = document.getElementById('video-display');
+    // const containerDiv = videoDisplayDiv.parentNode;
+    //
+    // videoDisplayDiv.remove();
+    //
+    // videoDisplayDiv = document.createElement('div');
+    // videoDisplayDiv.setAttribute('id', 'video-display');
+    // videoDisplayDiv.classList.add('row', 'mt-5');
+    // containerDiv.appendChild(videoDisplayDiv);
+    //
+    // document.getElementById('btn-join-room').disabled = false;
+    // document.getElementById('btn-create-room').disabled = false;
+    // document.getElementById('room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+    // document.getElementById('join-room-text').value = '';
+    //
+    // socket.emit('end-call', { 'room-id': roomId, 'client-id': clientId });
+    // socket.close();
+    // socket = null;
 }
 
-async function setLocalMedia() {
+async function setLocalMedia(audioEnabled = true, videoEnabled = true) {
+    const userMediaConstraints = {};
+    let tempStream;
+
+    if(audioEnabled === true) {
+        userMediaConstraints['audio'] = mediaConstraints['audio'];
+    }
+    if(videoEnabled === true) {
+        userMediaConstraints['video'] = mediaConstraints['video'];
+    }
+
     try {
-        localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        tempStream = await navigator.mediaDevices.getUserMedia(userMediaConstraints);
     }
     catch(error) {
         handleError(error);
     }
 
-    navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
-        gotDevices(deviceInfos, [document.getElementById('audio-input-source'), document.getElementById('video-input-source')]);
-    }).catch(handleError);
+    if(tempStream) {
+        localStreams.push(tempStream);
+        const videoMetaData = getVideoMetaData(clientName, clientId, instances);
+        const videoConstraints = getVideoConstraints(true, true, true, true);
+        const videoElement = getVideoElement(videoMetaData, videoConstraints);
 
-    const videoMetaData = {
-        'video-tag': clientName,
-        'video-id': clientId,
-        'video-instance': 0
-    };
+        await navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
+            gotDevices(deviceInfos, [document.getElementById('audio-source-' + instances),
+                document.getElementById('video-source-' + instances)], instances);
+        }).catch(handleError);
 
-    const constraints = {
-        'autoplay': true,
-        'muted': true,
-        'local': true,
-        'playsInLine': true
-    };
-
-    createVideoElement(videoMetaData, constraints);
-    document.getElementById('horizontal-row').hidden = false;
-    document.getElementById('div-select').hidden = false;
+        videoElement.srcObject = localStreams[instances];
+        audioMuted.push(false);
+        videoMuted.push(false);
+        instances++;
+    }
 }
 
 async function setUpConnection(peerId, peerName, initiateCall = false) {
-    const videoMetaData = {
-        'video-tag': peerName,
-        'video-id': peerId,
-        'video-instance': 0
-    };
-
-    const constraints = {
-        'autoplay': true,
-        'muted': false,
-        'local': false,
-        'playsInLine': true
-    };
-
-    createVideoElement(videoMetaData, constraints);
     peerConnections[peerId] = { 'peer-name': peerName, 'pc': new RTCPeerConnection(iceServers) };
-    peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId); };
+    peerConnections[peerId].pc.ontrack = (track) => { setRemoteStream(track, peerId, peerName); };
     addLocalStreamTracks(peerId);
     peerConnections[peerId].pc.onicecandidate = (iceCandidate) => { gatherIceCandidates(iceCandidate, peerId); };
     peerConnections[peerId].pc.oniceconnectionstatechange = (event) => { checkPeerDisconnection(event, peerId); };
@@ -334,13 +411,27 @@ async function createOffer(peerId) {
 }
 
 function addLocalStreamTracks(peerId) {
-    localStream.getTracks().forEach((track) => {
-        peerConnections[peerId].pc.addTrack(track, localStream);
+    localStreams.forEach((stream) => {
+        if(stream) {
+            stream.getTracks().forEach((track) => {
+                peerConnections[peerId].pc.addTrack(track, stream);
+            });
+        }
     });
 }
 
-async function setRemoteStream(track, peerId) {
-    document.getElementById(peerId+'-0').srcObject = track.streams[0];
+function setRemoteStream(trackEvent, peerId, peerName) {
+    let videoElement = document.getElementById(peerId.slice(-5) + '-' + trackEvent.streams[0].id);
+
+    if(videoElement) {
+        videoElement.srcObject = trackEvent.streams[0];
+    }
+    else {
+        const videoMetaData = getVideoMetaData(peerName, peerId.slice(-5) + '-' + trackEvent.streams[0].id);
+        const constraints = getVideoConstraints(true, false, false, true);
+        videoElement = getVideoElement(videoMetaData, constraints);
+        videoElement.srcObject = trackEvent.streams[0];
+    }
 }
 
 function gatherIceCandidates(iceCandidate, peerId) {
@@ -350,58 +441,76 @@ function gatherIceCandidates(iceCandidate, peerId) {
 }
 
 function checkPeerDisconnection(event, peerId) {
-    if(peerConnections[peerId]) {
-        let state = peerConnections[peerId].pc.iceConnectionState;
-
-        if(state === 'failed' || state === 'closed' || state === 'disconnected') {
-            delete peerConnections[peerId];
-            document.getElementById(peerId + '-0').parentElement.remove();
-        }
-    }
+    // if(peerConnections[peerId]) {
+    //     let state = peerConnections[peerId].pc.iceConnectionState;
+    //
+    //     if(state === 'failed' || state === 'closed' || state === 'disconnected') {
+    //         delete peerConnections[peerId];
+    //         document.getElementById(peerId + '-0').parentElement.remove();
+    //     }
+    // }
 }
 
 // Changing Input Sources Functions
-function changeDevice() {
-    if(localStream) {
-        localStream.getTracks().forEach(track => {
+function changeDevice(changeEvent) {
+    const index = changeEvent.target.id.split('-')[2];
+    const userMediaConstraints = {};
+
+    if(localStreams[index]) {
+        localStreams[index].getTracks().forEach(track => {
             track.stop();
         });
     }
-    const audioSource = document.getElementById('audio-input-source');
-    const videoSource = document.getElementById('video-input-source');
-    const constraints = {
-        audio: {deviceId: audioSource.value ? {exact: audioSource.value} : undefined},
-        video: {deviceId: videoSource.value ? {exact: videoSource.value} : undefined}
-    };
-    navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then((deviceInfo) => {
-        gotDevices(deviceInfo, [audioSource, videoSource]);
+
+    const audioSource = document.getElementById('audio-source-' + index);
+    const videoSource = document.getElementById('video-source-' + index);
+
+    userMediaConstraints['audio'] = mediaConstraints['audio'];
+    userMediaConstraints['audio']['deviceId'] = audioSource.value ? { exact: audioSource.value } : undefined;
+    userMediaConstraints['video'] = mediaConstraints['video'];
+    userMediaConstraints['video']['deviceId'] = videoSource.value ? { exact: videoSource.value } : undefined;
+
+    navigator.mediaDevices.getUserMedia(userMediaConstraints).then((updatedStream) => {
+        return gotStream(updatedStream, index);
+    }).then((deviceInfo) => {
+        gotDevices(deviceInfo, [audioSource, videoSource], index);
     }).catch(handleError);
 }
 
-function gotStream(updatedStream) {
-    const videoElement = document.getElementById(clientId + '-' + 0);
-    localStream = updatedStream;
-    videoElement.srcObject = localStream;
-    changeTracks();
+function gotStream(updatedStream, index) {
+    const ids = [];
+
+    localStreams[index].getTracks().forEach((track) => {
+        ids.push(track.id);
+    });
+
+    const videoElement = document.getElementById(clientId + '-' + index);
+    localStreams[index] = updatedStream;
+    videoElement.srcObject = localStreams[index];
+    changeTracks(ids, index);
     return navigator.mediaDevices.enumerateDevices();
 }
 
-function changeTracks() {
+function changeTracks(ids, index) {
     if(Object.keys(peerConnections).length !== 0) {
         Object.keys(peerConnections).forEach(key => {
             peerConnections[key].pc.getSenders().forEach(sender => {
-                if(sender.track.kind === 'audio') {
-                    sender.replaceTrack(localStream.getAudioTracks()[0]);
-                }
-                else if(sender.track.kind === 'video') {
-                    sender.replaceTrack(localStream.getVideoTracks()[0]);
-                }
+                ids.forEach((id) => {
+                    if(sender.track.id === id) {
+                        if(sender.track.kind === 'audio') {
+                            sender.replaceTrack(localStreams[index].getAudioTracks()[0]);
+                        }
+                        else if(sender.track.kind === 'video') {
+                            sender.replaceTrack(localStreams[index].getVideoTracks()[0]);
+                        }
+                    }
+                });
             });
         });
     }
 }
 
-function gotDevices(deviceInfos, selectors) {
+function gotDevices(deviceInfos, selectors, index) {
     // Handles being called several times to update labels. Preserve values.
     const values = selectors.map(select => select.value);
     selectors.forEach(select => {
@@ -414,11 +523,11 @@ function gotDevices(deviceInfos, selectors) {
         const option = document.createElement('option');
         option.value = deviceInfo.deviceId;
         if (deviceInfo.kind === 'audioinput') {
-            option.text = deviceInfo.label || `microphone ${document.getElementById('audio-input-source').length + 1}`;
-            document.getElementById('audio-input-source').appendChild(option);
+            option.text = deviceInfo.label || `microphone ${document.getElementById('audio-source-' + index).length + 1}`;
+            document.getElementById('audio-source-' + index).appendChild(option);
         } else if (deviceInfo.kind === 'videoinput') {
-            option.text = deviceInfo.label || `camera ${document.getElementById('video-input-source').length + 1}`;
-            document.getElementById('video-input-source').appendChild(option);
+            option.text = deviceInfo.label || `camera ${document.getElementById('video-source-' + index).length + 1}`;
+            document.getElementById('video-source-' + index).appendChild(option);
         }
     }
     selectors.forEach((select, selectorIndex) => {
@@ -492,8 +601,8 @@ async function onAnswer(data) {
 }
 
 function onEndCall(data) {
-    delete peerConnections[data['client-id']];
-    document.getElementById(data['client-id'] + '-0').parentElement.remove();
+    // delete peerConnections[data['client-id']];
+    // document.getElementById(data['client-id'] + '-0').parentElement.remove();
 }
 
 // Error Functions
