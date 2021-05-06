@@ -586,7 +586,7 @@ function onClientDisconnected(data) {
     if(peerConnections[data['client-id']]) {
         delete peerConnections[data['client-id']];
 
-        const vidList = document.querySelectorAll(`[id^=${data['client-id']}]`);
+        const vidList = document.querySelectorAll(`[id^="${data['client-id']}"]`);
 
         vidList.forEach((vidElement) => {
             vidElement.srcObject = null;
