@@ -127,9 +127,11 @@ function toggleButtonDisability(disable) {
     document.getElementById('btn-create-room').disabled = disable;
     if(disable === true) {
         document.getElementById('sec-details').style.display = 'none';
+        document.getElementById('sec-controls').style.display = 'block';
     }
     else {
         document.getElementById('sec-details').style.display = 'block';
+        document.getElementById('sec-controls').style.display = 'none';
     }
 }
 
@@ -185,21 +187,24 @@ function getLabelElement(labelText, labelFor) {
     return parentDiv;
 }
 
-function getControlsDiv(instance) {
+function getControlsDiv(instance, audioEnabled, videoEnabled) {
     const controlsDiv = document.createElement('div');
-    const toggleMicrophone = document.createElement('i');
-    const toggleVideo = document.createElement('i');
-    // const removeStream = document.createElement('i');
-
-    toggleMicrophone.setAttribute('id', 'mic-' + instance);
-    toggleVideo.setAttribute('id', 'vid-' + instance);
-    // removeStream.setAttribute('id', 'rem-' + instance);
-
     controlsDiv.classList.add('controls');
-    toggleMicrophone.classList.add('fas', 'fa-microphone');
-    toggleVideo.classList.add('fas', 'fa-video', 'ml-5');
-    // removeStream.classList.add('fas', 'fa-times', 'ml-5', 'redcontrol');
 
+    if(audioEnabled === true) {
+        const toggleMicrophone = document.createElement('i');
+        toggleMicrophone.setAttribute('id', 'mic-' + instance);
+        toggleMicrophone.classList.add('fas', 'fa-microphone');
+        toggleMicrophone.addEventListener('click', onClickAudioControl);
+        controlsDiv.appendChild(toggleMicrophone);
+    }
+    if(videoEnabled === true) {
+        const toggleVideo = document.createElement('i');
+        toggleVideo.setAttribute('id', 'vid-' + instance);
+        toggleVideo.classList.add('fas', 'fa-video', 'ml-5');
+        toggleVideo.addEventListener('click', onClickVideoControl);
+        controlsDiv.appendChild(toggleVideo);
+    }
     controlsDiv.addEventListener('mouseover', () => {
         controlsDiv.style.display = 'block';
     });
@@ -207,14 +212,6 @@ function getControlsDiv(instance) {
     controlsDiv.addEventListener('mouseout', () => {
         controlsDiv.style.display = 'none';
     });
-
-    toggleMicrophone.addEventListener('click', onClickAudioControl);
-    toggleVideo.addEventListener('click', onClickVideoControl);
-    // removeStream.addEventListener('click', onClickRemoveStreamControl);
-
-    controlsDiv.appendChild(toggleMicrophone);
-    controlsDiv.appendChild(toggleVideo);
-    // controlsDiv.appendChild(removeStream);
 
     return controlsDiv;
 }
@@ -241,7 +238,7 @@ function getVideoElement(videoMetaData, constraints, display = true) {
     videoElement.autoplay = constraints['autoplay'];
 
     if(constraints['local'] === true) {
-        const controlsDiv = getControlsDiv(videoMetaData['video-instance']);
+        const controlsDiv = getControlsDiv(videoMetaData['video-instance'], constraints['audio-enabled'], constraints['video-enabled']);
 
         videoElement.classList.add('transformX');
 
@@ -302,9 +299,6 @@ function onClickVideoControl(videoControlElement) {
     }
 }
 
-function onClickRemoveStreamControl(removeStreamControlElement) {
-}
-
 function endCall(disconnectControlElement) {
     localStreams.forEach((stream) => {
         stream.getTracks().forEach((track) => {
@@ -341,46 +335,6 @@ function endCall(disconnectControlElement) {
 
     socket.close();
     socket = null;
-
-    // Change this to remove tracks.
-    // localStream.getTracks().forEach((track) => {
-    //     track.stop();
-    // });
-    //
-    // Object.keys(peerConnections).forEach((key) => {
-    //     peerConnections[key].pc.ontrack = null;
-    //     peerConnections[key].pc.onremovetrack = null;
-    //     peerConnections[key].pc.onicecandidate = null;
-    //     peerConnections[key].pc.oniceconnectionstatechange = null;
-    //     peerConnections[key].pc.onsignalingstatechange = null;
-    //     peerConnections[key].pc.onicegatheringstatechange = null;
-    //     peerConnections[key].pc.onnegotiationneeded = null;
-    //     peerConnections[key].pc.close();
-    //     delete peerConnections[key];
-    // });
-    //
-    // peerConnections = {};
-    //
-    // document.getElementById(clientId + '-0').srcObject = null;
-    //
-    // let videoDisplayDiv = document.getElementById('video-display');
-    // const containerDiv = videoDisplayDiv.parentNode;
-    //
-    // videoDisplayDiv.remove();
-    //
-    // videoDisplayDiv = document.createElement('div');
-    // videoDisplayDiv.setAttribute('id', 'video-display');
-    // videoDisplayDiv.classList.add('row', 'mt-5');
-    // containerDiv.appendChild(videoDisplayDiv);
-    //
-    // document.getElementById('btn-join-room').disabled = false;
-    // document.getElementById('btn-create-room').disabled = false;
-    // document.getElementById('room-id').innerText = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
-    // document.getElementById('join-room-text').value = '';
-    //
-    // socket.emit('end-call', { 'room-id': roomId, 'client-id': clientId });
-    // socket.close();
-    // socket = null;
 }
 
 async function setLocalMedia(audioEnabled = true, videoEnabled = true) {
@@ -472,17 +426,6 @@ function gatherIceCandidates(iceCandidate, peerId) {
     if(iceCandidate.candidate != null) {
         socket.emit('ice-candidate', {'ice-candidate': iceCandidate.candidate, 'room-id': roomId, 'client-id': clientId, 'peer-id': peerId });
     }
-}
-
-function checkPeerDisconnection(event, peerId) {
-    // if(peerConnections[peerId]) {
-    //     let state = peerConnections[peerId].pc.iceConnectionState;
-    //
-    //     if(state === 'failed' || state === 'closed' || state === 'disconnected') {
-    //         delete peerConnections[peerId];
-    //         document.getElementById(peerId + '-0').parentElement.remove();
-    //     }
-    // }
 }
 
 // Changing Input Sources Functions

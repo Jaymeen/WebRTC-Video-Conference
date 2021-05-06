@@ -20,43 +20,39 @@
         </div>
         <hr>
         <div class="row">
-            <div class="col-md-6 text-center">
+            <div class="col-md-7 text-center">
                 <div class="form-group">
                     <input class="form-control" id="join-room-text" type="text" placeholder="Enter the Room Id">
                 </div>
             </div>
-            <div class="col-md-6 text-center">
+            <div class="col-md-2 text-center">
                 <button id="btn-join-room" class="btn btn-warning" onclick="joinRoom()">Join Room</button>
             </div>
-        </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="hr47"><hr></div>
-                <div class="or">OR</div>
-                <div class="hr47"><hr></div>
+            <div class="col-md-1 text-center pt-2">
+                <strong class="">OR</strong>
+            </div>
+            <div class="col-md-2 text-center">
+                <button id="btn-create-room" class="btn btn-success" onclick="createRoom()">Create Room</button>
             </div>
         </div>
-        <div class="row">
+    </section>
+    <hr>
+    <section id="sec-controls" style="display: none">
+        <div class="row mt-1">
             <div class="col-md-6 text-center">
                 <div id="room-id" class="roomid">
                     xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
                 </div>
             </div>
-            <div class="col-md-6 text-center">
-                <button id="btn-create-room" class="btn btn-success" onclick="createRoom()">Create Room</button>
+            <div class="col-md-3 text-center">
+                <button class="btn btn-primary" data-toggle="modal" data-target="#selectTracksModal">New Stream</button>
+            </div>
+            <div class="col-md-3 text-center">
+                <button class="btn btn-danger" onclick="endCall()">End Call</button>
             </div>
         </div>
         <hr>
     </section>
-    <div class="row mt-5">
-        <div class="col-md-6 text-center">
-            <button class="btn btn-primary" data-toggle="modal" data-target="#selectTracksModal">New Stream</button>
-        </div>
-        <div class="col-md-6 text-center">
-            <button class="btn btn-danger" onclick="endCall()">End Call</button>
-        </div>
-    </div>
-    <hr>
     <div id="local-video-display" class="row mt-3">
 
     </div>
