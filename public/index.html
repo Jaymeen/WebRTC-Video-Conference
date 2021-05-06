@@ -10,42 +10,50 @@
 </head>
 <body>
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="form-group">
-                <input type="text" class="form-control" id="clientname-text" placeholder="Enter a Username">
+    <section id="sec-details">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="clientname-text" placeholder="Enter a Username">
+                </div>
             </div>
         </div>
-    </div>
-    <hr>
-    <div class="row">
-        <div class="col-md-6 text-center">
-            <div class="form-group">
-                <input class="form-control" id="join-room-text" type="text">
+        <hr>
+        <div class="row">
+            <div class="col-md-6 text-center">
+                <div class="form-group">
+                    <input class="form-control" id="join-room-text" type="text" placeholder="Enter the Room Id">
+                </div>
+            </div>
+            <div class="col-md-6 text-center">
+                <button id="btn-join-room" class="btn btn-warning" onclick="joinRoom()">Join Room</button>
             </div>
         </div>
-        <div class="col-md-6 text-center">
-            <button id="btn-join-room" class="btn btn-warning" onclick="joinRoom(this)">Join Room</button>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <div class="hr47"><hr></div>
-            <div class="or">OR</div>
-            <div class="hr47"><hr></div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6 text-center">
-            <div id="room-id" class="roomid">
-                xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        <div class="row">
+            <div class="col-md-12">
+                <div class="hr47"><hr></div>
+                <div class="or">OR</div>
+                <div class="hr47"><hr></div>
             </div>
         </div>
-        <div class="col-md-3 text-center">
-            <button id="btn-create-room" class="btn btn-success" onclick="createRoom()">Create Room</button>
+        <div class="row">
+            <div class="col-md-6 text-center">
+                <div id="room-id" class="roomid">
+                    xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+                </div>
+            </div>
+            <div class="col-md-6 text-center">
+                <button id="btn-create-room" class="btn btn-success" onclick="createRoom()">Create Room</button>
+            </div>
         </div>
-        <div class="col-md-3 text-center">
-            <button id="btn-add-stream" class="btn btn-success" onclick="addStream()">Add Stream</button>
+        <hr>
+    </section>
+    <div class="row mt-5">
+        <div class="col-md-6 text-center">
+            <button class="btn btn-primary" data-toggle="modal" data-target="#selectTracksModal">New Stream</button>
+        </div>
+        <div class="col-md-6 text-center">
+            <button class="btn btn-danger" onclick="endCall()">End Call</button>
         </div>
     </div>
     <hr>
@@ -54,6 +62,33 @@
     </div>
     <div id="remote-video-display" class="row mt-5">
 
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="selectTracksModal" tabindex="-1" role="dialog" aria-labelledby="selectTracksModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="selectTracksModalTitle">Stream Tracks</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="audio-check" value="audio">
+                    <label class="form-check-label" for="audio-check">Audio Track</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="video-check" value="video">
+                    <label class="form-check-label" for="video-check">Video Track</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="addStream()" data-dismiss="modal">Add Tracks</button>
+            </div>
+        </div>
     </div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
