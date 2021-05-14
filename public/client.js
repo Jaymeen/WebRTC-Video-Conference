@@ -409,7 +409,7 @@ async function setRemoteStream(trackEvent, peerId, peerName) {
     const vidElements = document.querySelectorAll(`[id^="${ peerId }"]`);
     const length = vidElements.length;
     let videoElement = vidElements[length - 1];
-    const nextIndex = videoElement ? vidElements[length - 1].id.split('~')[0] + 1 : 0;
+    const nextIndex = videoElement ? Number(vidElements[length - 1].id.split('~')[1]) + 1 : 0;
 
     if((videoElement) && (videoElement.srcObject.id === trackEvent.streams[0].id)) {
         videoElement.srcObject = trackEvent.streams[0];
@@ -586,7 +586,7 @@ function onClientDisconnected(data) {
     if(peerConnections[data['client-id']]) {
         delete peerConnections[data['client-id']];
 
-        const vidList = document.querySelectorAll(`[id^=${data['client-id']}]`);
+        const vidList = document.querySelectorAll(`[id^="${data['client-id']}"]`);
 
         vidList.forEach((vidElement) => {
             vidElement.srcObject = null;
